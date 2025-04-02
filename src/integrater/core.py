@@ -13,7 +13,7 @@ from src.logger import setup_logger, Logger
 from src.config.config import load_config, ExpConfig
 
 
-class CoreSummarizer:
+class CoreIntegrater:
     """
     Use ETL Pattern
     """
@@ -52,6 +52,8 @@ class CoreSummarizer:
 
         hdf5_files = os.listdir(scan_dir)
         hdf5_files.sort(key=lambda name: int(name[1:-3]))
+
+        self.logger.info(hdf5_files)
         pbar = tqdm(hdf5_files, total=len(hdf5_files))
         for hdf5_file in pbar:
             loader_strategy = self.get_loader(os.path.join(scan_dir, hdf5_file))
@@ -87,12 +89,12 @@ class CoreSummarizer:
         except (KeyError, FileNotFoundError, ValueError) as e:
             self.logger.exception(f"{type(e)} happened in {hdf5_dir}")
             return None
-        # except Exception as e:
-        #     self.logger.exception(f"Failed to load: {type(e)}: {str(e)}")
-        #     return None
         except Exception as e:
-            self.logger.critical(f"{type(e)} happened in {hdf5_dir}")
-            raise
+            self.logger.exception(f"Failed to load: {type(e)}: {str(e)}")
+            return None
+        # except Exception as e:
+        #     self.logger.critical(f"{type(e)} happened in {hdf5_dir}")
+        #     raise
 
     def preprocess_data(
         self,

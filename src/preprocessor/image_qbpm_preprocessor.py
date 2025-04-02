@@ -23,7 +23,11 @@ def create_pohang(roi_rect: RoiRectangle) -> ImagesQbpmProcessor:
 
     def pohang(images_qbpm: ImagesQbpm) -> ImagesQbpm:
         images, qbpm = images_qbpm
-        roi_images = roi_rect.slice(images)
+        if roi_rect is None:
+            roi_images = images
+        else:
+            roi_images = roi_rect.slice(images)
+
 
         roi_intensities = roi_images.sum((1, 2))
 
@@ -45,6 +49,13 @@ def create_pohang(roi_rect: RoiRectangle) -> ImagesQbpmProcessor:
         return valid_images, qbpm[qbpm_mask][valid]
 
     return pohang
+
+
+def create_threshold(n: float) -> ImagesQbpmProcessor:
+    def threshold(images_qbpm: ImagesQbpm) -> ImagesQbpm:
+        images, qbpm = images_qbpm
+        return np.where(images > 4, images, 0), qbpm
+    return threshold
 
 
 def no_negative(images_qbpm: ImagesQbpm) -> ImagesQbpm:

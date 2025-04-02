@@ -28,16 +28,16 @@ class DataAnalyzer:
             raise FileNotFoundError(f"The file {file} does not exist.")
 
         data: Mapping[str, npt.NDArray] = np.load(file)
-
-        if "delay" not in data or "pon" not in data or "poff" not in data:
+        if "delay" not in data:
             raise ValueError(
-                f"The file {file} does not contain the required keys: 'delay', 'pon', 'poff'"
+                f"The file {file} does not contain the required keys: 'delay'"
             )
 
         self.delay: npt.NDArray = data["delay"]
         self.poff_images: npt.NDArray = data["poff"]
-        self.pon_images: npt.NDArray = data["pon"]
-
+        # FIXME:
+        if "pon" not in data:
+            self.pon_images: npt.NDArray = np.zeros_like(data["poff"]) + 1
         if angle:
             self.poff_images = rotate(self.poff_images, angle, axes=(1, 2), reshape=False)
             self.pon_images = rotate(self.pon_images, angle, axes=(1, 2), reshape=False)
