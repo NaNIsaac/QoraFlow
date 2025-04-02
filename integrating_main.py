@@ -12,12 +12,12 @@ from src.integrater.core import CoreIntegrater
 from src.integrater.loader import PalXFELLoader
 from src.integrater.saver import SaverStrategy, get_saver_strategy
 from src.preprocessor.image_qbpm_preprocessor import (
-    subtract_dark_background,
+    # subtract_dark_background,
     create_pohang,
     create_threshold,
     ImagesQbpmProcessor
 )
-from src.gui.roi import get_hdf5_images, RoiSelector
+from gui.roi_core import get_hdf5_images, RoiSelector
 from src.filesystem import get_run_scan_dir
 from src.config.config import load_config, ExpConfig
 from src.functional import compose
@@ -25,66 +25,6 @@ from src.functional import compose
 
 logger: Logger = setup_logger()
 config: ExpConfig = load_config()
-
-# TODO: Move to other directory
-def get_scan_nums(run_num: int) -> list[int]:
-    """Get Scan numbers from real directory"""
-    run_dir: Path = get_run_scan_dir(config.path.load_dir, run_num)
-    scan_folders: Generator[Path, None, None] = run_dir.iterdir()
-    return [int(str(scan_dir.stem).split("=")[1]) for scan_dir in scan_folders]
-
-# TODO: Move to other directory
-def get_roi(scan_dir: str) -> RoiRectangle:
-    """Get Roi for QBPM Normalization"""
-    files = os.listdir(scan_dir)
-    file: str = os.path.join(scan_dir, files[0])
-    metadata = pd.read_hdf(file, key='metadata')
-    roi_coord = np.array(
-        metadata[
-            f'detector_{config.param.hutch.value}_{config.param.detector.value}_parameters.ROI'
-        ].iloc[0][0]
-    )
-
-    roi = np.array([
-        roi_coord[config.param.x1],
-        roi_coord[config.param.y1],
-        roi_coord[config.param.x2],
-        roi_coord[config.param.y2]
-    ], dtype=np.int_)
-
-    return RoiRectangle.from_tuple(roi)
-
-# TODO: Move to other directory
-def select_roi(scan_dir: str, index_mode: Optional[int] = None) -> RoiRectangle:
-    """Get Roi for QBPM Normalization"""
-    files = os.listdir(scan_dir)
-    files.sort(key=lambda name: int(name[1:-3]))
-    if index_mode is None:
-        index = len(files) // 2
-    else:
-        index = index_mode
-
-    file: str = os.path.join(scan_dir, files[index])
-    image = get_hdf5_images(file, config).sum(axis=0)
-    return RoiRectangle.from_tuple(RoiSelector().select_roi(np.log1p(image)))
-
-
-# TODO: Move to other directory
-def auto_roi(scan_dir: str, index_mode: Optional[int] = None):
-    files = os.listdir(scan_dir)
-    files.sort(key=lambda name: int(name[1:-3]))
-    if index_mode is None:
-        index = len(files) // 2
-    else:
-        index = index_mode
-
-    file: str = os.path.join(scan_dir, files[index])
-    image = get_hdf5_images(file, config).sum(axis=0)
-    y, x, *_ = np.unravel_index(np.argmax(image, axis=None), image.shape)
-
-    d = 20
-
-    return RoiRectangle(x - d, y - d, x + d, y + d)
 
 
 def setup_preprocessors(scan_dir: str) -> dict[str, ImagesQbpmProcessor]:

@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Generator
+from src.config.config import ExpConfig
 
 
 def get_run_scan_dir(mother: str | Path, run: int, scan: Optional[int] = None, file_name: Optional[str] = None) -> Path:
@@ -50,3 +51,10 @@ def make_run_scan_dir(mother: str | Path, run: int, scan: int, file_name: str | 
 
     path = path / file_name if file_name is not None else path
     return path
+
+
+def get_scan_nums(run_num: int, config: ExpConfig) -> list[int]:
+    """Get Scan numbers from real directory"""
+    run_dir: Path = get_run_scan_dir(config.path.load_dir, run_num)
+    scan_folders: Generator[Path, None, None] = run_dir.iterdir()
+    return [int(scan_dir.stem.split("=")[1]) for scan_dir in scan_folders]

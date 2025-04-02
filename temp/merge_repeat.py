@@ -7,7 +7,7 @@ from roi_rectangle import RoiRectangle
 from tifffile import imwrite
 
 from src.config.config import load_config
-from src.gui.roi import RoiSelector
+from gui.roi_core import RoiSelector
 
 
 def shift_image(arr, dx, dy):

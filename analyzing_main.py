@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import tifffile
 from roi_rectangle import RoiRectangle
 
-from src.gui.roi import RoiSelector
+from gui.roi_core import RoiSelector
 from src.filesystem import make_run_scan_dir
 from src.config.config import load_config
 from src.logger import setup_logger, Logger
