@@ -5,7 +5,7 @@ import click
 import h5py
 
 from src.config.config import load_config
-from src.filesystem import get_run_scan_directory
+from src.filesystem import get_run_scan_dir
 
 
 def list_files_in_directory(directory: str, show_size: bool, show_modified: bool, show_hdf5_keys: bool) -> None:
@@ -51,9 +51,9 @@ def file_check(run_n: int, size: bool, date: bool, keys: bool) -> None:
     """List files of the run directory"""
     config = load_config()
     load_dir = config.path.load_dir
-    run_dir = get_run_scan_directory(load_dir, run_n)
+    run_dir = get_run_scan_dir(load_dir, run_n)
 
-    list_files_in_directory(run_dir, size, date, keys)
+    list_files_in_directory(str(run_dir), size, date, keys)
 
 
 if __name__ == '__main__':

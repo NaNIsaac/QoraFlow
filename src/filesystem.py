@@ -1,14 +1,13 @@
-import os
-
+from pathlib import Path
 from typing import Optional
 
 
-def get_run_scan_directory(mother: str, run: int, scan: Optional[int] = None, file_num: Optional[int] = None) -> str:
+def get_run_scan_dir(mother: str | Path, run: int, scan: Optional[int] = None, file_name: Optional[str] = None) -> Path:
     """
     Generate the directory for a given run and scan number, optionally with a file number.
 
     Parameters:
-        mother (str): The base directory or path where the path will be generated.
+        mother (str | Path): The base directory or path where the path will be generated.
         run (int): The run number for which the path will be generated.
         scan (int, optional): The scan number for which the path will be generated.
             If not provided, only the run directory path will be returned.
@@ -16,33 +15,38 @@ def get_run_scan_directory(mother: str, run: int, scan: Optional[int] = None, fi
             If provided, both run and scan directories will be included in the path.
 
     Returns:
-        str: The path representing the specified run, scan, and file number (if applicable).
+        Path: The path representing the specified run, scan, and file number (if applicable).
     """
+    mother = Path(mother)
 
-    if scan is None and file_num is None:
-        return os.path.join(mother, f"run={run:0>3}")
-    if scan is not None and file_num is None:
-        return os.path.join(mother, f"run={run:0>3}", f"scan={scan:0>3}")
-    if scan is not None and file_num is not None:
-        return os.path.join(mother, f"run={run:0>3}", f"scan={scan:0>3}", f"p{file_num:0>4}.h5")
+    if scan is None and file_name is None:
+        return mother / f"run={run:0>3}"
+    if scan is not None and file_name is None:
+        return mother / f"run={run:0>3}" / f"scan={scan:0>3}"
+    if scan is not None and file_name is not None:
+        return mother / f"run={run:0>3}" / f"scan={scan:0>3}" / file_name
 
 
-def make_run_scan_directory(mother: str, run: int, scan: int) -> str:
+def make_run_scan_dir(mother: str | Path, run: int, scan: int, file_name: str | Path) -> Path:
     """
     Create a nested directory structure for the given run and scan numbers.
 
     Parameters:
-        dir (str): The base directory where the nested structure will be created.
+        dir (str | Path): The base directory where the nested structure will be created.
         run (int): The run number for which the directory will be created.
         scan (int): The scan number for which the directory will be created.
 
     Returns:
-        str: The path of the created nested directory.
+        Path: The path of the created nested directory.
     """
+    mother = Path(mother)
+    mother.mkdir(parents=True, exist_ok=True)
 
-    os.makedirs(mother, exist_ok=True)
-    path = os.path.join(mother, f'run={run:0>3d}')
-    os.makedirs(path, exist_ok=True)
-    path = os.path.join(path, f'scan={scan:0>3d}')
-    os.makedirs(path, exist_ok=True)
+    path = mother / f'run={run:0>3d}'
+    path.mkdir(parents=True, exist_ok=True)
+
+    path = path / f'scan={scan:0>3d}'
+    path.mkdir(parents=True, exist_ok=True)
+
+    path = path / file_name if file_name is not None else path
     return path

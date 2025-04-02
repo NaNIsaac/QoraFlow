@@ -2,19 +2,20 @@ import cProfile
 import pstats
 import io
 import logging
+from pathlib import Path
 
 from src.integrater.loader import PalXFELLoader
 from src.config.config import load_config, ExpConfig
-from src.filesystem import get_run_scan_directory
+from src.filesystem import get_run_scan_dir
 
 
 def main() -> None:
     """Profile program with cProfile module and visualize with tuna."""
     config: ExpConfig = load_config()
     load_dir: str = config.path.load_dir
-    file: str = get_run_scan_directory(load_dir, 150, 1, 10)
+    file: Path = get_run_scan_dir(load_dir, 150, 1, 10)
 
-    logging_file: str = 'logs/profiling/profiling.log'
+    logging_file: Path = Path('logs/profiling/profiling.log')
     # logging Setting
     logging.basicConfig(filename=logging_file, level=logging.INFO, format='%(message)s')
 
@@ -50,7 +51,7 @@ def main() -> None:
     logging.info(profiling_results)
 
     # Save the profiling results to a file
-    stats_file = 'logs/profiling/profiling.prof'
+    stats_file: Path = Path('logs/profiling/profiling.prof')
     stats.dump_stats(stats_file)
 
     print(f"Profiling results logged to '{logging_file}'")

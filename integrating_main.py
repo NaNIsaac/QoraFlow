@@ -1,5 +1,7 @@
 import os
 from typing import Optional
+from pathlib import Path
+from typing import Generator
 
 import pandas as pd
 import numpy as np
@@ -16,7 +18,7 @@ from src.preprocessor.image_qbpm_preprocessor import (
     ImagesQbpmProcessor
 )
 from src.gui.roi import get_hdf5_images, RoiSelector
-from src.filesystem import get_run_scan_directory
+from src.filesystem import get_run_scan_dir
 from src.config.config import load_config, ExpConfig
 from src.functional import compose
 
@@ -27,9 +29,9 @@ config: ExpConfig = load_config()
 # TODO: Move to other directory
 def get_scan_nums(run_num: int) -> list[int]:
     """Get Scan numbers from real directory"""
-    run_dir: str = get_run_scan_directory(config.path.load_dir, run_num)
-    scan_folders: list[str] = os.listdir(run_dir)
-    return [int(scan_dir.split("=")[1]) for scan_dir in scan_folders]
+    run_dir: Path = get_run_scan_dir(config.path.load_dir, run_num)
+    scan_folders: Generator[Path, None, None] = run_dir.iterdir()
+    return [int(str(scan_dir.stem).split("=")[1]) for scan_dir in scan_folders]
 
 # TODO: Move to other directory
 def get_roi(scan_dir: str) -> RoiRectangle:
@@ -115,7 +117,7 @@ def integrate_scan(run_n: int, scan_n: int) -> None:
     """Integrate Single Scan"""
 
     load_dir = config.path.load_dir
-    scan_dir = get_run_scan_directory(load_dir, run_n, scan_n)
+    scan_dir = get_run_scan_dir(load_dir, run_n, scan_n)
 
     preprocessors: dict[str, ImagesQbpmProcessor] = setup_preprocessors(scan_dir)
 

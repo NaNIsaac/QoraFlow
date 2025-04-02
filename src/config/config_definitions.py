@@ -8,6 +8,8 @@ Classes:
     - `ExperimentConfiguration`: A dataclass representing the complete configuration for an experiment,
     combining configuration parameters and paths.
 """
+from pathlib import Path
+
 from pydantic import BaseModel, Field
 
 from src.config.enums import Hutch, Detector, Xray, Hertz
@@ -51,17 +53,17 @@ class ExpPaths(BaseModel):
     A class to manage configuration paths for an experiment.
 
     Attributes:
-        load_dir (str): The load directory path.
-        anaylsis_dir (str): The save directory path.
+        load_dir (Path): The load directory path.
+        anaylsis_dir (Path): The save directory path.
     """
-    log_dir: str = ""
+    log_dir: Path = ""
 
-    load_dir: str = ""
-    analysis_dir: str = ""
+    load_dir: Path = ""
+    analysis_dir: Path = ""
 
-    mat_dir: str = "mat_files"
-    processed_dir: str = "processed_data"
-    output_dir: str = "output_data"
+    mat_dir: Path = "mat_files"
+    processed_dir: Path = "processed_data"
+    output_dir: Path = "output_data"
 
 
 class ExpConfig(BaseModel):

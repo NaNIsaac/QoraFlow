@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 from collections import defaultdict
 from typing import Optional, Any
 
@@ -20,11 +20,12 @@ class CoreIntegrater:
     def __init__(
         self,
         LoaderStrategy: type[RawDataLoader],
-        scan_dir: str,
+        scan_dir: str | Path,
         preprocessor: Optional[dict[str, ImagesQbpmProcessor]] = None,
         logger: Optional[Logger] = None
     ) -> None:
         self.LoaderStrategy: type[RawDataLoader] = LoaderStrategy
+        scan_dir = Path(scan_dir)
         self.preprocessor: dict[str, ImagesQbpmProcessor] = preprocessor or {"no_processing": lambda x: x}
 
         self.logger: Logger = logger if logger is not None else setup_logger()
@@ -33,7 +34,7 @@ class CoreIntegrater:
 
         self.logger.info(f"Meta Data:\n{self.config}")
 
-    def scan(self, scan_dir: str) -> None:
+    def scan(self, scan_dir: Path) -> None:
         """
         Processes a single scan directory.
 
@@ -50,13 +51,12 @@ class CoreIntegrater:
             for pipeline_name in self.preprocessor
         }
 
-        hdf5_files = os.listdir(scan_dir)
-        hdf5_files.sort(key=lambda name: int(name[1:-3]))
+        hdf5_files = scan_dir.glob("*.h5")
+        hdf5_files: list[Path] = sorted(hdf5_files, key=lambda file: int(file.stem[1:-3]))
 
-        self.logger.info(hdf5_files)
-        pbar = tqdm(hdf5_files, total=len(hdf5_files))
+        pbar = tqdm(hdf5_files, total=len(hdf5_files), desc=scan_dir.name)
         for hdf5_file in pbar:
-            loader_strategy = self.get_loader(os.path.join(scan_dir, hdf5_file))
+            loader_strategy = self.get_loader(scan_dir / hdf5_file)
             if loader_strategy is None:
                 continue
             preprocessed_data = self.preprocess_data(loader_strategy)

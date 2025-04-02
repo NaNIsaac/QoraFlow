@@ -12,7 +12,7 @@ Example usage:
     logger = setup_logger()
     logger.info("This is an info message.")
 """
-import os
+from pathlib import Path
 
 import loguru
 from loguru._logger import Logger
@@ -28,10 +28,10 @@ def setup_logger() -> Logger:
         Logger: The configured logger instance.
     """
     config = load_config()
-    log_dir = config.path.log_dir
+    log_dir: Path = config.path.log_dir
 
     formatter = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {name}:{function}:{line} - {message}"
-    log_file: str = os.path.join(log_dir, "{time:YYYY-MM-DD}/{time:YYYYMMDD_HHmmss}.log")
+    log_file: str = log_dir / "{time:YYYY-MM-DD}/{time:YYYYMMDD_HHmmss}.log"
     loguru.logger.add(log_file, format=formatter, rotation="500 MB", compression="zip")
 
     return loguru.logger

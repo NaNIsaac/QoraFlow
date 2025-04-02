@@ -7,7 +7,7 @@ from matplotlib.widgets import Slider
 
 from src.preprocessor.generic_preprocessors import get_linear_regression_confidence_bounds, ransac_regression
 from src.integrater.loader import PalXFELLoader
-from src.filesystem import get_run_scan_directory
+from src.filesystem import get_run_scan_dir
 
 from src.config.config import load_config
 
@@ -90,7 +90,7 @@ def find_outliers_gui(y: npt.NDArray, x: npt.NDArray) -> float:
 def find_outliers_run_scan_gui(run: int, scan: int) -> float:
 
     config = load_config()
-    scan_dir = get_run_scan_directory(config.path.load_dir, run, scan)
+    scan_dir = get_run_scan_dir(config.path.load_dir, run, scan)
     files = os.listdir(scan_dir)
     file = os.path.join(scan_dir, files[len(files) // 2])
 
@@ -103,7 +103,7 @@ def find_outliers_run_scan_gui(run: int, scan: int) -> float:
 
 def RANSAC_regression_gui(run: int, scan: int) -> None:
     config = load_config()
-    scan_dir = get_run_scan_directory(config.path.load_dir, run, scan)
+    scan_dir = get_run_scan_dir(config.path.load_dir, run, scan)
     files = os.listdir(scan_dir)
     file = os.path.join(scan_dir, files[len(files) // 2])
 

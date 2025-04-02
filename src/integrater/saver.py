@@ -6,7 +6,7 @@ import numpy as np
 from scipy.io import savemat
 
 from src.config.config import load_config
-from src.filesystem import make_run_scan_directory
+from src.filesystem import make_run_scan_dir
 
 
 def get_file_base_name(run_n: int, scan_n: int) -> str:
@@ -69,7 +69,7 @@ class NpzSaverStrategy(SaverStrategy):
         processed_dir = config.path.processed_dir
         os.makedirs(processed_dir, exist_ok=True)
         file_base_name = get_file_base_name(run_n, scan_n)
-        npz_dir = make_run_scan_directory(processed_dir, run_n, scan_n)
+        npz_dir = make_run_scan_dir(processed_dir, run_n, scan_n)
         npz_file = os.path.join(npz_dir, file_base_name + comment + ".npz")
         np.savez(npz_file, **data_dict)
         self._file = npz_file

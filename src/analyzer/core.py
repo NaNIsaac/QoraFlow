@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 from collections.abc import Mapping
 
 import numpy as np
@@ -23,8 +23,9 @@ class DataAnalyzer:
         FileNotFoundError: If the file does not exist.
         ValueError: If the file does not contain the required keys.
     """
-    def __init__(self, file: str, angle: int = 0) -> None:
-        if not os.path.exists(file):
+    def __init__(self, file: str | Path, angle: int = 0) -> None:
+        file = Path(file)
+        if not file.exists():
             raise FileNotFoundError(f"The file {file} does not exist.")
 
         data: Mapping[str, npt.NDArray] = np.load(file)
@@ -38,6 +39,8 @@ class DataAnalyzer:
         # FIXME:
         if "pon" not in data:
             self.pon_images: npt.NDArray = np.zeros_like(data["poff"]) + 1
+        else:
+            self.pon_images: npt.NDArray = data["pon"]
         if angle:
             self.poff_images = rotate(self.poff_images, angle, axes=(1, 2), reshape=False)
             self.pon_images = rotate(self.pon_images, angle, axes=(1, 2), reshape=False)

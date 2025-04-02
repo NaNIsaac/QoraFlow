@@ -69,13 +69,13 @@ def load_matdata(h5file: str) -> pd.DataFrame:
 
 if __name__ == "__main__":
 
-    from src.filesystem import get_run_scan_directory
+    from src.filesystem import get_run_scan_dir
     from src.config.config import load_config
     import matplotlib.pyplot as plt
     config = load_config()
     load_dir: str = config.path.load_dir
 
-    file = get_run_scan_directory(load_dir, 1, 1, 110)
+    file = get_run_scan_dir(load_dir, 1, 1, 110)
     # file = 'Z:\\241103_DFXM\\dat\\241108-241109\\20241108_Cu_80nm_01093.h5'
     with h5py.File(file) as hf:
         # print(hf)
