@@ -1,16 +1,16 @@
-from pathlib import Path
 from collections import defaultdict
-from typing import Optional, Any
+from pathlib import Path
+from typing import Any, Optional
 
 import numpy as np
 import numpy.typing as npt
 from tqdm import tqdm
 
-from src.integrater.saver import SaverStrategy
+from src.config.config import ExpConfig, load_config
 from src.integrater.loader import RawDataLoader
+from src.integrater.saver import SaverStrategy
+from src.logger import Logger, setup_logger
 from src.preprocessor.image_qbpm_preprocessor import ImagesQbpmProcessor
-from src.logger import setup_logger, Logger
-from src.config.config import load_config, ExpConfig
 
 
 class CoreIntegrater:
@@ -52,7 +52,7 @@ class CoreIntegrater:
         }
 
         hdf5_files = scan_dir.glob("*.h5")
-        hdf5_files: list[Path] = sorted(hdf5_files, key=lambda file: int(file.stem[1:-3]))
+        hdf5_files: list[Path] = sorted(hdf5_files, key=lambda file: int(file.stem[1:]))
 
         pbar = tqdm(hdf5_files, total=len(hdf5_files), desc=scan_dir.name)
         for hdf5_file in pbar:

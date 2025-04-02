@@ -3,8 +3,8 @@ This module provides functionality to load and save configuration files,
 with support for placeholder substitution in the configuration values.
 """
 import re
-from pathlib import Path
 from functools import lru_cache
+from pathlib import Path
 
 import yaml
 

@@ -1,14 +1,14 @@
 from pathlib import Path
-from typing import Generator, Optional
+from typing import Optional
 
 import numpy as np
 import pandas as pd
 from roi_rectangle import RoiRectangle
 
-from src.gui.roi_core import RoiSelector
-from src.filesystem import get_run_scan_dir
-from src.integrater.loader import get_hdf5_images
 from src.config.config import ExpConfig
+from src.filesystem import get_run_scan_dir
+from src.gui.roi_core import RoiSelector
+from src.integrater.loader import get_hdf5_images
 
 
 def get_metadata_roi(scan_dir: str | Path, config: ExpConfig) -> RoiRectangle:

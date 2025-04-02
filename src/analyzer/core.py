@@ -1,12 +1,12 @@
-from pathlib import Path
 from collections.abc import Mapping
+from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+from roi_rectangle import RoiRectangle
 from scipy.ndimage import rotate
 from scipy.optimize import curve_fit
-from roi_rectangle import RoiRectangle
 
 from src.mathematics import gaussian, mul_delta_q
 
@@ -157,6 +157,7 @@ class DataAnalyzer:
             # "pon_guassain_intensity": pon_guassain_intensity / pon_guassain_intensity[0],
 
         })
-
+        print(self.delay)
+        print(len(roi_df), len(np.array(self.delay)))
         roi_df = roi_df.set_index(self.delay)
         return roi_df

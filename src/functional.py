@@ -3,8 +3,8 @@ Functional Programming in Python
 This module is designed to support the functional programming paradigm.
 """
 
-from functools import reduce
 from collections.abc import Callable
+from functools import reduce
 
 
 def compose(*funcs: Callable):

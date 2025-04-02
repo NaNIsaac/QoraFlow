@@ -1,19 +1,13 @@
-from functools import partial
 from collections.abc import Callable
+from functools import partial
 
 import numpy as np
 import numpy.typing as npt
 from roi_rectangle import RoiRectangle
 
 from src.preprocessor.generic_preprocessors import (
-    div_images_by_qbpm,
-    filter_images_qbpm_by_linear_model,
-    subtract_dark,
-    ransac_regression,
-    equalize_brightness,
-    add_bias
-)
-
+    add_bias, div_images_by_qbpm, equalize_brightness,
+    filter_images_qbpm_by_linear_model, ransac_regression, subtract_dark)
 
 ImagesQbpm = tuple[npt.NDArray, npt.NDArray]
 ImagesQbpmProcessor = Callable[[ImagesQbpm], ImagesQbpm]

@@ -1,7 +1,7 @@
 import os
 
-import pandas as pd
 import h5py
+import pandas as pd
 
 
 def get_file_status(root: str) -> dict:
@@ -69,13 +69,14 @@ def load_matdata(h5file: str) -> pd.DataFrame:
 
 if __name__ == "__main__":
 
-    from src.filesystem import get_run_scan_dir
-    from src.config.config import load_config
     import matplotlib.pyplot as plt
+
+    from src.config.config import load_config
+    from src.filesystem import get_run_scan_dir
     config = load_config()
     load_dir: str = config.path.load_dir
 
-    file = get_run_scan_dir(load_dir, 1, 1, 110)
+    file = get_run_scan_dir(load_dir, 1, 1, sub_path='p0110.h5')
     # file = 'Z:\\241103_DFXM\\dat\\241108-241109\\20241108_Cu_80nm_01093.h5'
     with h5py.File(file) as hf:
         # print(hf)

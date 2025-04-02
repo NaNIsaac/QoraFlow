@@ -1,29 +1,26 @@
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
-import matplotlib.pyplot as plt
 import tifffile
 from roi_rectangle import RoiRectangle
 
-from gui.roi_core import RoiSelector
-from src.filesystem import make_run_scan_dir
-from src.config.config import load_config
-from src.logger import setup_logger, Logger
-from src.analyzer.draw_figure import (
-    patch_rectangle,
-    draw_com_figure,
-    draw_intensity_figure,
-    draw_intensity_diff_figure,
-    draw_com_diff_figure
-)
 from src.analyzer.core import DataAnalyzer
+from src.analyzer.draw_figure import (draw_com_diff_figure, draw_com_figure,
+                                      draw_intensity_diff_figure,
+                                      draw_intensity_figure, patch_rectangle)
+from src.config.config import load_config
+from src.filesystem import get_run_scan_dir, make_run_scan_dir
+from src.gui.roi_core import RoiSelector
+from src.logger import Logger, setup_logger
 
 if TYPE_CHECKING:
-    from pandas import DataFrame
     from matplotlib.figure import Figure
+    from pandas import DataFrame
+
     from src.config.config import ExpConfig
 
 
@@ -42,8 +39,8 @@ def main() -> None:
         # Define file paths and names
         processed_dir: str = config.path.processed_dir
         file_name: str = f"run={run_num:0>4}_scan={scan_num:0>4}"
-        npz_file: Path = make_run_scan_dir(processed_dir, run_num, scan_num, file_name).with_suffix(".npz")
-
+        npz_file: Path = get_run_scan_dir(processed_dir, run_num, scan_num, sub_path=file_name).with_suffix(".npz")
+        logger.info(f"NPZ file: {npz_file}")
         if not npz_file.exists():
             error_message = f"The file {npz_file} does not exist."
             logger.error(error_message)
@@ -73,7 +70,7 @@ def main() -> None:
         data_df: DataFrame = processor.analyze_by_roi(roi_rect)
 
         # Define save directory
-        output_dir: Path = make_run_scan_dir(config.path.output_dir, run_num, scan_num, roi_name)
+        output_dir: Path = make_run_scan_dir(config.path.output_dir, run_num, scan_num, sub_path=roi_name)
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Slice images to ROI

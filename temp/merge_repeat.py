@@ -1,13 +1,13 @@
 import os
 
-from scipy.io import loadmat, savemat
-from scipy.ndimage import center_of_mass
 import numpy as np
 from roi_rectangle import RoiRectangle
+from scipy.io import loadmat, savemat
+from scipy.ndimage import center_of_mass
 from tifffile import imwrite
 
+from src.gui.roi_core import RoiSelector
 from src.config.config import load_config
-from gui.roi_core import RoiSelector
 
 
 def shift_image(arr, dx, dy):

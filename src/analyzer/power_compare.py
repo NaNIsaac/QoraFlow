@@ -1,9 +1,9 @@
 import os
 
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
 
-from src.config.config import load_config, ExpConfig
+from src.config.config import ExpConfig, load_config
 from src.filesystem import get_run_scan_dir
 
 
@@ -14,7 +14,7 @@ def power_compare(power_run: dict[int, int]) -> pd.DataFrame:
 
     output_dir: str = config.path.output_dir
     for power, run_num in power_run.items():
-        data_file = os.path.join(get_run_scan_dir(output_dir, run_num, 1), "roi_small", "data.csv")
+        data_file = get_run_scan_dir(output_dir, run_num, 1) / "roi_small"/ "data.csv"
         data_df = pd.read_csv(data_file, index_col=0)
         delays = data_df.index.values
         com_y = data_df["poff_com_y"].values - data_df["pon_com_y"].values

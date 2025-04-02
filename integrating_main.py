@@ -1,44 +1,28 @@
-import os
-from typing import Optional
 from pathlib import Path
-from typing import Generator
 
-import pandas as pd
-import numpy as np
 from roi_rectangle import RoiRectangle
 
-from src.logger import setup_logger, Logger
+from src.config.config import ExpConfig, load_config
+from src.filesystem import get_run_scan_dir, get_scan_nums
+from src.functional import compose
+from src.gui.select_roi import select_roi  # auto_roi
 from src.integrater.core import CoreIntegrater
 from src.integrater.loader import PalXFELLoader
 from src.integrater.saver import SaverStrategy, get_saver_strategy
-from src.preprocessor.image_qbpm_preprocessor import (
-    # subtract_dark_background,
-    create_pohang,
-    create_threshold,
-    ImagesQbpmProcessor
-)
-from gui.roi_core import get_hdf5_images, RoiSelector
-from src.filesystem import get_run_scan_dir
-from src.config.config import load_config, ExpConfig
-from src.functional import compose
-
+from src.logger import Logger, setup_logger
+from src.preprocessor.image_qbpm_preprocessor import (  # subtract_dark_background,
+    ImagesQbpmProcessor, create_pohang, create_threshold)
 
 logger: Logger = setup_logger()
 config: ExpConfig = load_config()
 
 
-def setup_preprocessors(scan_dir: str) -> dict[str, ImagesQbpmProcessor]:
+def setup_preprocessors(scan_dir: Path) -> dict[str, ImagesQbpmProcessor]:
     """Return preprocessors"""
 
-    # roi_rect = select_roi(scan_dir, None)
-    # FIXME: Make better auto roi
-    # roi_rect = auto_roi(scan_dir, None)
-
-    # if roi_rect is None:
-    #     raise ValueError(f"No ROI Rectangle Set for {scan_dir}")
-    # logger.info(f"ROI rectangle: {roi_rect.to_tuple()}")
-
+    roi_rect: RoiRectangle = select_roi(scan_dir, config, None)
     roi_rect = None
+
     pohang = create_pohang(roi_rect)
     threshold4 = create_threshold(4)
     # compose make a function that exicuted from right to left
@@ -56,8 +40,8 @@ def setup_preprocessors(scan_dir: str) -> dict[str, ImagesQbpmProcessor]:
 def integrate_scan(run_n: int, scan_n: int) -> None:
     """Integrate Single Scan"""
 
-    load_dir = config.path.load_dir
-    scan_dir = get_run_scan_dir(load_dir, run_n, scan_n)
+    load_dir: Path = config.path.load_dir
+    scan_dir: Path = get_run_scan_dir(load_dir, run_n, scan_n)
 
     preprocessors: dict[str, ImagesQbpmProcessor] = setup_preprocessors(scan_dir)
 
@@ -85,7 +69,7 @@ def main() -> None:
 
     for run_num in run_nums:  # pylint: disable=not-an-iterable
         logger.info(f"Run: {run_num}")
-        scan_nums: list[int] = get_scan_nums(run_num)
+        scan_nums: list[int] = get_scan_nums(run_num, config)
         for scan_num in scan_nums:
             try:
                 integrate_scan(run_num, scan_num)

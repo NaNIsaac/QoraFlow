@@ -1,11 +1,12 @@
 from pathlib import Path
+
+import click
 import numpy as np
 from roi_rectangle import RoiRectangle
-import click
 
 from gui.roi_core import RoiSelector
-from src.config.config import load_config
 from src.analyzer.converter import load_npz
+from src.config.config import load_config
 from src.filesystem import get_run_scan_dir
 
 
@@ -13,7 +14,7 @@ def load_image(run_n: int) -> np.ndarray:
     """Load image data from npz file."""
     config = load_config()
     scan_n: int = 1
-    npz_file: Path = get_run_scan_dir(config.path.processed_dir, run_n, scan_n, f'run={run_n:04}_scan={scan_n:04}.npz')
+    npz_file: Path = get_run_scan_dir(config.path.processed_dir, run_n, scan_n, sub_path=f'run={run_n:04}_scan={scan_n:04}.npz')
 
     # Check if the file exists
     if not npz_file.exists():

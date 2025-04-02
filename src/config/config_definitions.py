@@ -12,7 +12,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from src.config.enums import Hutch, Detector, Xray, Hertz
+from src.config.enums import Detector, Hertz, Hutch, Xray
 
 
 class ExpParams(BaseModel):
@@ -56,14 +56,14 @@ class ExpPaths(BaseModel):
         load_dir (Path): The load directory path.
         anaylsis_dir (Path): The save directory path.
     """
-    log_dir: Path = ""
+    log_dir: Path = Path()
 
-    load_dir: Path = ""
-    analysis_dir: Path = ""
+    load_dir: Path = Path()
+    analysis_dir: Path = Path()
 
-    mat_dir: Path = "mat_files"
-    processed_dir: Path = "processed_data"
-    output_dir: Path = "output_data"
+    mat_dir: Path = Path("mat_files")
+    processed_dir: Path = Path("processed_data")
+    output_dir: Path = Path("output_data")
 
 
 class ExpConfig(BaseModel):
@@ -82,7 +82,7 @@ class ExpConfig(BaseModel):
 
 if __name__ == "__main__":
     config_dict = {
-        "runs": ["1", "2", "3"],
+        "runs": [1, 2, 3],
         'path': {
             'load_dir': 'your/path/a',
             'analysis_dir': 'your/path/b',
@@ -105,7 +105,7 @@ if __name__ == "__main__":
         }
     }
 
-    config = ExpConfig(**config_dict)
+    config: ExpConfig = ExpConfig(**config_dict)
     print(config.runs)
 
     print(config.path.load_dir)

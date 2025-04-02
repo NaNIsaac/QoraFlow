@@ -1,15 +1,15 @@
 import os
-from pathlib import Path
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Union
 
-import pandas as pd
-import numpy as np
-import numpy.typing as npt
 import h5py
 import hdf5plugin  # pylint: disable=unused-import
+import numpy as np
+import numpy.typing as npt
+import pandas as pd
 
-from src.config.config import load_config, ExpConfig
+from src.config.config import ExpConfig, load_config
 from src.config.enums import Hertz
 
 
@@ -197,12 +197,13 @@ def get_hdf5_images(file: str, config: ExpConfig) -> npt.NDArray:
 
 
 if __name__ == "__main__":
-    from src.filesystem import get_run_scan_dir
     import time
+
+    from src.filesystem import get_run_scan_dir
 
     config: ExpConfig = load_config()
     load_dir: str = config.path.load_dir
-    file: Path = get_run_scan_dir(load_dir, 141, 1, 77)
+    file: Path = get_run_scan_dir(load_dir, 141, 1, sub_path='p0077.h5')
 
     start = time.time()
     loader = PalXFELLoader(file)
