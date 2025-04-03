@@ -7,7 +7,7 @@ import numpy.typing as npt
 from matplotlib import patches
 from roi_rectangle import RoiRectangle
 
-from src.config.config import ExpConfig, load_config
+from src.config import ExpConfig, load_config
 from src.filesystem import get_run_scan_dir
 from src.integrater.loader import get_hdf5_images
 

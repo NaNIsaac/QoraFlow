@@ -6,7 +6,7 @@ from roi_rectangle import RoiRectangle
 
 from gui.roi_core import RoiSelector
 from src.analyzer.converter import load_npz
-from src.config.config import load_config
+from src.config import load_config
 from src.filesystem import get_run_scan_dir
 
 

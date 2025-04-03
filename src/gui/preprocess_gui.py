@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 from matplotlib.widgets import Slider
 
-from src.config.config import load_config
+from src.config import load_config
 from src.filesystem import get_run_scan_dir
 from src.integrater.loader import PalXFELLoader
 from src.preprocessor.generic_preprocessors import (

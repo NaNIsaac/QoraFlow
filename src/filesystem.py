@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Generator, Optional
 
-from src.config.config import ExpConfig
+from src.config import ExpConfig
 
 
 def get_run_scan_dir(mother: str | Path, run: int, scan: Optional[int] = None, *, sub_path: Optional[str] = None) -> Path:

@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from src.config.config import ExpConfig, load_config
+from src.config import ExpConfig, load_config
 from src.config.enums import Hertz
 
 

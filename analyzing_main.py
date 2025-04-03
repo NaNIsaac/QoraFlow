@@ -10,48 +10,45 @@ from roi_rectangle import RoiRectangle
 
 from src.analyzer.core import DataAnalyzer
 from src.analyzer.draw_figure import (draw_com_diff_figure, draw_com_figure,
-                                      draw_intensity_diff_figure,
-                                      draw_intensity_figure, patch_rectangle)
-from src.config.config import load_config
+                                    draw_intensity_diff_figure,
+                                    draw_intensity_figure, patch_rectangle)
+from src.config import load_config
 from src.filesystem import get_run_scan_dir, make_run_scan_dir
 from src.gui.roi_core import RoiSelector
 from src.logger import Logger, setup_logger
 
 if TYPE_CHECKING:
-    from matplotlib.figure import Figure
     from pandas import DataFrame
 
-    from src.config.config import ExpConfig
+    from src.config import ExpConfig
 
 
 def main() -> None:
+    '''Entry point'''
     config: ExpConfig = load_config()
     logger: Logger = setup_logger()
 
-    run_nums: list[int] = [161, 162, 163, 164, 165, 166, 167]
+    run_nums: list[int] = [162]
     logger.info(f"Data Analysing run={run_nums}")
-    for run_num in run_nums:  # pylint: disable=not-an-iterable
-        # Define run and scan numbers
+    for run_num in run_nums:
         scan_num: int = 1
         now = datetime.now()
         roi_name: str = now.strftime("%Y%m%d_%H%M%S")
 
-        # Define file paths and names
         processed_dir: str = config.path.processed_dir
         file_name: str = f"run={run_num:0>4}_scan={scan_num:0>4}"
         npz_file: Path = get_run_scan_dir(processed_dir, run_num, scan_num, sub_path=file_name).with_suffix(".npz")
         logger.info(f"NPZ file: {npz_file}")
+
         if not npz_file.exists():
-            error_message = f"The file {npz_file} does not exist."
-            logger.error(error_message)
-            raise FileNotFoundError(error_message)
+            err_msg: str = f"The file {npz_file} does not exist."
+            logger.error(err_msg)
+            raise FileNotFoundError(err_msg)
 
         logger.info(f"Run DataAnalyzer run={run_num:0>3} scan={scan_num:0>3}")
 
         # Initialize MeanDataProcessor
         processor: DataAnalyzer = DataAnalyzer(npz_file)
-
-        # Extract images
         poff_images: npt.NDArray = processor.poff_images
         pon_images: npt.NDArray = processor.pon_images
 
@@ -60,8 +57,9 @@ def main() -> None:
             np.log1p(poff_images[0])
         )
         if roi is None:
-            logger.error(f"No ROI Rectangle Set for run={run_num}, scan={scan_num}")
-            raise ValueError(f"No ROI Rectangle Set for run={run_num}, scan={scan_num}")
+            err_msg: str = f"No ROI Rectangle Set for run={run_num}, scan={scan_num}"
+            logger.error(err_msg)
+            raise ValueError(err_msg)
 
         logger.info(f"ROI rectangle: {roi}")
         roi_rect: RoiRectangle = RoiRectangle.from_tuple(roi)
@@ -77,49 +75,34 @@ def main() -> None:
         roi_poff_images: npt.NDArray = roi_rect.slice(poff_images)
         roi_pon_images: npt.NDArray = roi_rect.slice(pon_images)
 
-        # Save images as TIFF files
-        tifffile.imwrite(output_dir / 'poff.tif', poff_images.astype(np.float32))
-        logger.info(f"Saved TIF '{output_dir / 'poff.tif'}'")
-
-        tifffile.imwrite(output_dir / 'pon.tif', pon_images.astype(np.float32))
-        logger.info(f"Saved TIF '{output_dir / 'pon.tif'}'")
-
-        tifffile.imwrite(output_dir / "roi_poff.tif", roi_poff_images.astype(np.float32))
-        logger.info(f"Saved TIF '{output_dir / 'roi_poff.tif'}'")
-
-        tifffile.imwrite(output_dir / "roi_pon.tif", roi_pon_images.astype(np.float32))
-        logger.info(f"Saved TIF '{output_dir / 'roi_pon.tif'}'")
-
-        # Save data as CSV
-        data_file: Path = output_dir /"data.csv"
+        # Save Images and Data
+        data_file: Path = output_dir / "data.csv"
         data_df.to_csv(data_file)
         logger.info(f"Saved CSV '{data_file}'")
 
-        # Create figures
-        image_fig: Figure = patch_rectangle(
-            np.log1p(processor.poff_images.sum(axis=0)),
-            *roi_rect.to_tuple()
-        )
-        intensity_fig: Figure = draw_intensity_figure(data_df)
-        intensity_diff_fig: Figure = draw_intensity_diff_figure(data_df)
-        com_fig: Figure = draw_com_figure(data_df)
-        com_diff_fig: Figure = draw_com_diff_figure(data_df)
+        images_to_save = {
+            'poff.tif': poff_images,
+            'pon.tif': pon_images,
+            'roi_poff.tif': roi_poff_images,
+            'roi_pon.tif': roi_pon_images,
+        }
+        for filename, image_data in images_to_save.items():
+            file_path = output_dir / filename
+            tifffile.imwrite(file_path, image_data.astype(np.float32))
+            logger.info(f"Saved TIF '{file_path}'")
 
-        # Save figures as PNG files
-        image_fig.savefig(output_dir / "log_image.png")
-        logger.info(f"Saved PNG '{output_dir / 'log_image.png'}'")
-
-        intensity_fig.savefig(output_dir /"delay-intensity.png")
-        logger.info(f"Saved PNG '{output_dir / 'delay-intensity.png'}'")
-
-        intensity_diff_fig.savefig(output_dir / "delay-intensity_diff.png")
-        logger.info(f"Saved PNG '{output_dir / 'delay-intensity_diff.png'}'")
-
-        com_fig.savefig(output_dir / "delay-com.png")
-        logger.info(f"Saved PNG '{output_dir /'delay-com.png'}'")
-
-        com_diff_fig.savefig(output_dir / "delay-com_diff.png")
-        logger.info(f"Saved PNG '{output_dir / 'delay-com_diff.png'}'")
+        # Save Figures
+        figures_to_save = {
+            "log_image.png": patch_rectangle(np.log1p(processor.poff_images.sum(axis=0)), *roi_rect.to_tuple()),
+            "delay-intensity.png": draw_intensity_figure(data_df),
+            "delay-intensity_diff.png": draw_intensity_diff_figure(data_df),
+            "delay-com.png": draw_com_figure(data_df),
+            "delay-com_diff.png": draw_com_diff_figure(data_df),
+        }
+        for filename, fig in figures_to_save.items():
+            file_path = output_dir / filename
+            fig.savefig(file_path)
+            logger.info(f"Saved PNG '{file_path}'")
 
         logger.info(f"Run DataAnalyzer run={run_num:0>3} scan={scan_num:0>3} is Done.")
         plt.close("all")

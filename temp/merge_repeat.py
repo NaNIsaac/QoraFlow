@@ -7,7 +7,7 @@ from scipy.ndimage import center_of_mass
 from tifffile import imwrite
 
 from src.gui.roi_core import RoiSelector
-from src.config.config import load_config
+from src.config import load_config
 
 
 def shift_image(arr, dx, dy):

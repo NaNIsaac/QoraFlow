@@ -6,7 +6,7 @@ import numpy.typing as npt
 from scipy.optimize import curve_fit
 from sklearn.linear_model import RANSACRegressor
 
-from src.config.config import load_config
+from src.config import load_config
 
 
 def ransac_regression(

@@ -4,7 +4,7 @@ from datetime import datetime
 import click
 import h5py
 
-from src.config.config import load_config
+from src.config import load_config
 from src.filesystem import get_run_scan_dir
 
 

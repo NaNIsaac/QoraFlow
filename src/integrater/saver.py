@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 from scipy.io import savemat
 
-from src.config.config import ExpConfig, load_config
+from src.config import ExpConfig, load_config
 from src.filesystem import make_run_scan_dir
 
 

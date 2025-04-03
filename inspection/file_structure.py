@@ -33,7 +33,7 @@ class StorageHandler:
 
 
 if __name__ == "__main__":
-    from src.config.config import load_config
+    from src.config import load_config
 
     config = load_config()
     load_dir: str = config.path.load_dir

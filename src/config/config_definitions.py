@@ -45,7 +45,6 @@ class ExpParams(BaseModel):
     sdd: float = 1.3
     dps: float = 7.5e-5
     beam_energy: float = 9.7
-    sigma_factor: float = 1
 
 
 class ExpPaths(BaseModel):
@@ -84,8 +83,8 @@ if __name__ == "__main__":
     config_dict = {
         "runs": [1, 2, 3],
         'path': {
-            'load_dir': 'your/path/a',
-            'analysis_dir': 'your/path/b',
+            'load_dir': 'your/path/aaa',
+            'analysis_dir': 'your/path/bbb',
             'output_dir': 'Image',
             'mat_dir': 'mat_files',
             'processed_dir': 'npz_files',

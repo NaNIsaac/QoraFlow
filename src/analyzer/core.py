@@ -157,7 +157,5 @@ class DataAnalyzer:
             # "pon_guassain_intensity": pon_guassain_intensity / pon_guassain_intensity[0],
 
         })
-        print(self.delay)
-        print(len(roi_df), len(np.array(self.delay)))
         roi_df = roi_df.set_index(self.delay)
         return roi_df

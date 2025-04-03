@@ -1,18 +1,18 @@
 runs:
-  [162]
+  [164]
 
 path:
   log_dir: ./logs
 
-  load_dir: Y:\240608_FXS\raw_data\h5\type=raw
-  analysis_dir: Y:\240608_FXS\analysis_data
+  load_dir: Y:/240608_FXS/raw_data/h5/type=raw
+  analysis_dir: Y:/240608_FXS/analysis_data
 
   # load_dir: /xfel/ffs/dat/ue_240819_FXS/raw_data/h5/type=raw/
   # analysis_dir: /home/hxpp-admin/Desktop/sogang/250324_sogang/analysis
 
-  output_dir: ${path.analysis_dir}\output_data
-  mat_dir: ${path.analysis_dir}\mat_files
-  processed_dir: ${path.analysis_dir}\processed_data
+  output_dir: ${path.analysis_dir}/output_data
+  mat_dir: ${path.analysis_dir}/mat_files
+  processed_dir: ${path.analysis_dir}/processed_data
 
 param:
   pump_setting: 30HZ

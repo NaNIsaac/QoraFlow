@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
     import matplotlib.pyplot as plt
 
-    from src.config.config import load_config
+    from src.config import load_config
     from src.filesystem import get_run_scan_dir
     config = load_config()
     load_dir: str = config.path.load_dir

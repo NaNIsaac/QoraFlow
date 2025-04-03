@@ -4,7 +4,7 @@ import logging
 import pstats
 from pathlib import Path
 
-from src.config.config import ExpConfig, load_config
+from src.config import ExpConfig, load_config
 from src.filesystem import get_run_scan_dir
 from src.integrater.loader import PalXFELLoader
 

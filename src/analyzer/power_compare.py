@@ -3,7 +3,7 @@ import os
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from src.config.config import ExpConfig, load_config
+from src.config import ExpConfig, load_config
 from src.filesystem import get_run_scan_dir
 
 

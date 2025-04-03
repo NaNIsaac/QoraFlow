@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from roi_rectangle import RoiRectangle
 
-from src.config.config import ExpConfig
+from src.config import ExpConfig
 from src.filesystem import get_run_scan_dir
 from src.gui.roi_core import RoiSelector
 from src.integrater.loader import get_hdf5_images
@@ -69,7 +69,7 @@ def auto_roi(scan_dir: str | Path, config: ExpConfig, index_mode: Optional[int] 
 
 
 if __name__ == "__main__":
-    from src.config.config import load_config
+    from src.config import load_config
 
     config: ExpConfig = load_config()
     scan_dir = get_run_scan_dir(config.path.load_dir, 114, 1)
