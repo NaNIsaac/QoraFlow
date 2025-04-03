@@ -48,9 +48,7 @@ def main() -> None:
     x0, y0 = center_of_mass(roi_arr.sum(0))
 
     shifted_arr_list = [arr_list[0]]
-    print(arr_list[0].shape)
     for arr in arr_list[1:]:
-        
         roi_arr = roi_rect.slice(arr)
         x, y = center_of_mass(roi_arr.sum(0))
         dx, dy = x0 - x, y0 -y

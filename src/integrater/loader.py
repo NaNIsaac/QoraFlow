@@ -1,7 +1,6 @@
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Union
 
 import h5py
 import hdf5plugin  # pylint: disable=unused-import
@@ -61,27 +60,16 @@ class PalXFELLoader(RawDataLoader):
         self.config: ExpConfig = load_config()
 
         metadata: pd.DataFrame = pd.read_hdf(self.file, key='metadata')
-        merged_df: pd.DataFrame = self.get_merged_df(metadata)
+        merged_df: pd.DataFrame = self._get_merged_df(metadata)
+        if merged_df.empty:
+            raise ValueError(f"No matching data found in {self.file}")
 
         self.images: npt.NDArray[np.float32] = np.stack(merged_df['image'].values)
         self.qbpm: npt.NDArray[np.float32] = np.stack(merged_df['qbpm'].values)
-        self.pump_state: npt.NDArray[np.bool_] = self.get_pump_mask(merged_df)
-        self.delay: npt.NDArray[np.float64] = self.get_delay(merged_df)
+        self.pump_state: npt.NDArray[np.bool_] = self._get_pump_mask(merged_df)
+        self.delay: npt.NDArray[np.float64] = self._get_delay(merged_df)
 
-        # roi_coord = np.array(
-        #     self.metadata[
-        #         f'detector_{self.config.param.hutch.value}_{self.config.param.detector.value}_parameters.ROI'
-        #     ].iloc[0][0]
-        # )
-        # roi = np.array([
-        #     roi_coord[self.config.param.x1],
-        #     roi_coord[self.config.param.x2],
-        #     roi_coord[self.config.param.y1],
-        #     roi_coord[self.config.param.y2]
-        # ], dtype=np.int_)
-        # self.roi_rect = RoiRectangle.from_tuple(roi)
-
-    def get_merged_df(self, metadata: pd.DataFrame) -> pd.DataFrame:
+    def _get_merged_df(self, metadata: pd.DataFrame) -> pd.DataFrame:
         """
         Merges image and qbpm data with metadata based on timestamps.
 
@@ -96,35 +84,22 @@ class PalXFELLoader(RawDataLoader):
                 raise KeyError(f"Key 'detector' not found in {self.file}")
 
             image_group = hf[f'detector/{self.config.param.hutch.value}/{self.config.param.detector.value}/image']
-            images_ts = np.asarray(image_group["block0_items"], dtype=np.int64)
-            images = np.asarray(image_group["block0_values"], dtype=np.float32)
-
+            images_ts = np.array(image_group["block0_items"], dtype=np.int64)
+            images = np.array(image_group["block0_values"], dtype=np.float64)
             qbpm_group = hf[f'qbpm/{self.config.param.hutch.value}/qbpm1']
-            qbpm_ts = np.asarray(qbpm_group['waveforms.ch1/axis1'], dtype=np.int64)
-            qbpm = np.stack(
-                [qbpm_group[f'waveforms.ch{i + 1}/block0_values'] for i in range(4)],
-                axis=0,
-                dtype=np.float32
-            ).sum(axis=(0, 2))
+            qbpm_ts = np.array(qbpm_group['waveforms.ch1/axis1'], dtype=np.int64)
+            qbpm = np.sum(
+                np.stack(
+                [qbpm_group[f'waveforms.ch{i + 1}/block0_values'] for i in range(4)], axis=0, dtype=np.float32
+                ), axis=(0, 2)
+            )
 
-        image_df = pd.DataFrame(
-            {
-                "timestamp": images_ts,
-                "image": list(images)
-            }
-        ).set_index('timestamp')
-
-        qbpm_df = pd.DataFrame(
-            {
-                "timestamp": qbpm_ts,
-                "qbpm": list(qbpm)
-            }
-        ).set_index('timestamp')
-
+        image_df = pd.DataFrame({"timestamp": images_ts, "image": list(images)}).set_index('timestamp')
+        qbpm_df = pd.DataFrame({"timestamp": qbpm_ts, "qbpm": list(qbpm)}).set_index('timestamp')
         merged_df = pd.merge(image_df, qbpm_df, left_index=True, right_index=True, how='inner')
         return pd.merge(metadata, merged_df, left_index=True, right_index=True, how='inner')
 
-    def get_delay(self, merged_df: pd.DataFrame) -> Union[np.float64, float]:
+    def _get_delay(self, merged_df: pd.DataFrame) -> np.float64 | float:
         """
         Retrieves the delay value from the merged_df.
 
@@ -140,7 +115,7 @@ class PalXFELLoader(RawDataLoader):
             return np.asarray(merged_df['delay_value'], dtype=np.float64)[0]
         return np.nan
 
-    def get_pump_mask(self, merged_df: pd.DataFrame) -> npt.NDArray[np.bool_]:
+    def _get_pump_mask(self, merged_df: pd.DataFrame) -> npt.NDArray[np.bool_]:
         """
         Generates a pump status mask based on the configuration settings.
 

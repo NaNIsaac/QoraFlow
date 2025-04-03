@@ -13,7 +13,7 @@ def main() -> None:
     """Profile program with cProfile module and visualize with tuna."""
     config: ExpConfig = load_config()
     load_dir: str = config.path.load_dir
-    file: Path = get_run_scan_dir(load_dir, 150, 1, 'p0010.h5')
+    file: Path = get_run_scan_dir(load_dir, 161, 1, sub_path='p0010.h5')
 
     logging_file: Path = Path('logs/profiling/profiling.log')
     # logging Setting

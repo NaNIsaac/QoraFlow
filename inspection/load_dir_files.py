@@ -68,20 +68,19 @@ def load_matdata(h5file: str) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-
-    import matplotlib.pyplot as plt
-
+    import numpy as np
     from src.config import load_config
     from src.filesystem import get_run_scan_dir
     config = load_config()
     load_dir: str = config.path.load_dir
 
-    file = get_run_scan_dir(load_dir, 1, 1, sub_path='p0110.h5')
-    # file = 'Z:\\241103_DFXM\\dat\\241108-241109\\20241108_Cu_80nm_01093.h5'
-    with h5py.File(file) as hf:
-        # print(hf)
-        # h5_tree(hf)
-        img = hf['run/scan00001/det/eh2hama_img/rawData'][()][0, 0, 0, 0]
-        plt.imshow(img)
+    file = get_run_scan_dir(load_dir, 162, 1, sub_path='p0050.h5')
+    print(pd.DataFrame(pd.read_hdf(file, 'metadata')))
 
-    plt.show()
+    with h5py.File(file, 'r') as hf:
+        h5_tree(hf)
+        # data = np.array(hf['metadata/axis0'])
+        # print(data)
+        # data = np.array(hf['metadata/axis1'])
+        # print(data)
+    # plt.show()

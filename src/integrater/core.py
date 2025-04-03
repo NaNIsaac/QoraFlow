@@ -51,7 +51,9 @@ class CoreIntegrater:
 
         hdf5_files: list[Path] = sorted(scan_dir.glob("*.h5"), key=lambda file: int(file.stem[1:]))
 
-        for hdf5_file in tqdm(hdf5_files, total=len(hdf5_files), desc=scan_dir.name):
+        desc = str(Path(*scan_dir.parts[-2:]))
+        pbar = tqdm(hdf5_files, total=len(hdf5_files), desc=desc)
+        for hdf5_file in pbar:
             loader = self._get_loader(scan_dir / hdf5_file)
             if loader is None:
                 continue
