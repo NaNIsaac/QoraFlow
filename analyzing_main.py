@@ -53,10 +53,7 @@ def main() -> None:
         pon_images: npt.NDArray = processor.pon_images
 
         # Select ROI using GUI
-        roi: Optional[tuple[int, int, int, int]] = RoiSelector().select_roi(
-            np.log1p(poff_images[0])
-        )
-        if roi is None:
+        if roi := RoiSelector().select_roi(np.log1p(poff_images[0])):
             err_msg: str = f"No ROI Rectangle Set for run={run_num}, scan={scan_num}"
             logger.error(err_msg)
             raise ValueError(err_msg)

@@ -140,18 +140,18 @@ def print_complexity_grades(root_dir):
 if __name__ == "__main__":
     root_dir: str = "./"
 
-    # project_structure = analyze_project(root_dir)
-    # print("Resent Project Structure:")
-    # print_project_structure(project_structure)
+    project_structure = analyze_project(root_dir)
+    print("Resent Project Structure:")
+    print_project_structure(project_structure)
 
     # project_structure = analyze_project("C:\\develop\\center4upt\\XFEL_data\\legacy")
     # print("Old Project Structure:")
     # print_project_structure(project_structure)
 
-    print("Project Complexity Grades:")
-    print_complexity_grades(root_dir)
-    print("Old Complexity Grades:")
-    print_complexity_grades("C:\\develop\\center4upt\\XFEL_data\\legacy")
+    # print("Project Complexity Grades:")
+    # print_complexity_grades(root_dir)
+    # print("Old Complexity Grades:")
+    # print_complexity_grades("C:\\develop\\center4upt\\XFEL_data\\legacy")
     # complexity_data = analyze_code_complexity(root_dir)
     # print("Code Complexity Analysis:")
     # print_code_complexity(complexity_data)

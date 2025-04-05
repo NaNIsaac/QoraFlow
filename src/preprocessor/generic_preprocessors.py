@@ -1,4 +1,3 @@
-import os
 from typing import Optional
 
 import numpy as np
@@ -129,11 +128,12 @@ def div_images_by_qbpm(images: npt.NDArray, qbpm: npt.NDArray) -> npt.NDArray:
     return images * qbpm.mean() / qbpm[:, np.newaxis, np.newaxis]
 
 
+# FIXME: Fix it by referring to Cohere
 def subtract_dark(images: npt.NDArray) -> npt.NDArray:
     config = load_config()
-    dark_file = os.path.join(config.path.analysis_dir, "dark_images/dark.npy")
+    dark_file = config.path.analysis_dir / "dark_images" / "dark.npy"
 
-    if not os.path.exists(dark_file):
+    if not dark_file.exists:
         raise FileNotFoundError(f"No such file or directory: {dark_file}")
 
     dark_images = np.load(dark_file)

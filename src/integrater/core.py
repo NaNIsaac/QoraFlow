@@ -57,6 +57,7 @@ class CoreIntegrater:
             loader = self._get_loader(scan_dir / hdf5_file)
             if loader is None:
                 continue
+
             preprocessed_data = self._preprocess_data(loader)
             for name, data in preprocessed_data.items():
                 for data_key, data_value in data.items():

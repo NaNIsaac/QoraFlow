@@ -4,7 +4,7 @@ import click
 import numpy as np
 from roi_rectangle import RoiRectangle
 
-from gui.roi_core import RoiSelector
+from src.gui.roi_core import RoiSelector
 from src.analyzer.converter import load_npz
 from src.config import load_config
 from src.filesystem import get_run_scan_dir

@@ -68,7 +68,6 @@ def load_matdata(h5file: str) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    import numpy as np
     from src.config import load_config
     from src.filesystem import get_run_scan_dir
     config = load_config()
@@ -78,9 +77,6 @@ if __name__ == "__main__":
     print(pd.DataFrame(pd.read_hdf(file, 'metadata')))
 
     with h5py.File(file, 'r') as hf:
+        print(hf)
         h5_tree(hf)
-        # data = np.array(hf['metadata/axis0'])
-        # print(data)
-        # data = np.array(hf['metadata/axis1'])
-        # print(data)
-    # plt.show()
+
