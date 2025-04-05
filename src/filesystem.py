@@ -34,8 +34,14 @@ def make_run_scan_dir(mother: str | Path, run: int, scan: int, *, sub_path: str 
     return path / sub_path if sub_path else path
 
 
-def get_scan_nums(run_num: int, config: ExpConfig) -> list[int]:
+def get_run_nums(path: str | Path) -> list[int]:
+    """Get Run numbers from real directory"""
+    run_folders: Generator[Path, None, None] = Path(path).iterdir()
+    return [int(run_dir.stem.split("=")[1]) for run_dir in run_folders]
+
+
+def get_scan_nums(path: str | Path, run_n: int) -> list[int]:
     """Get Scan numbers from real directory"""
-    run_dir: Path = get_run_scan_dir(config.path.load_dir, run_num)
+    run_dir: Path = get_run_scan_dir(path, run_n)
     scan_folders: Generator[Path, None, None] = run_dir.iterdir()
     return [int(scan_dir.stem.split("=")[1]) for scan_dir in scan_folders]

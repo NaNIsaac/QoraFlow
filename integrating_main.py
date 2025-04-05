@@ -64,14 +64,14 @@ def main() -> None:
 
     logger.info(f"Runs to process: {config.runs}")
 
-    for run_num in config.runs:
-        logger.info(f"Run: {run_num}")
-        scan_nums: list[int] = get_scan_nums(run_num, config)
-        for scan_num in scan_nums:
+    for run_n in config.runs:
+        logger.info(f"Run: {run_n}")
+        scan_nums: list[int] = get_scan_nums(config.path.load_dir, run_n)
+        for scan_n in scan_nums:
             try:
-                integrate_scan(run_num, scan_num)
+                integrate_scan(run_n, scan_n)
             except Exception:
-                logger.exception(f"Failed to process run={run_num}, scan={scan_num}")
+                logger.exception(f"Failed to process run={run_n}, scan={scan_n}")
                 raise
 
     logger.info("All processing is complete")
