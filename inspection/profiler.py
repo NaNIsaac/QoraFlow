@@ -6,7 +6,7 @@ from pathlib import Path
 
 from src.config import ExpConfig, load_config
 from src.filesystem import get_run_scan_dir
-from src.integrater.loader import PalXFELLoader
+from src.integrator.loader import PalXFELLoader
 
 
 def main() -> None:

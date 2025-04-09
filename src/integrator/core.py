@@ -7,13 +7,13 @@ import numpy.typing as npt
 from tqdm import tqdm
 
 from src.config import ExpConfig, load_config
-from src.integrater.loader import RawDataLoader
-from src.integrater.saver import SaverStrategy
+from src.integrator.loader import RawDataLoader
+from src.integrator.saver import SaverStrategy
 from src.logger import Logger, setup_logger
 from src.preprocessor.image_qbpm_preprocessor import ImagesQbpmProcessor
 
 
-class CoreIntegrater:
+class CoreIntegrator:
     """
     Use ETL Pattern
     """
@@ -28,20 +28,15 @@ class CoreIntegrater:
         scan_dir = Path(scan_dir)
         self.preprocessor: dict[str, ImagesQbpmProcessor] = preprocessor or {"no_processing": lambda x: x}
         self.logger: Logger = logger or setup_logger()
-        self.result: dict[str, defaultdict[str, npt.NDArray]] = self.scan(scan_dir)
+        self.result: dict[str, defaultdict[str, npt.NDArray]] = self.integrate(scan_dir)
         self.config: ExpConfig = load_config()
 
+        self.logger.info(f"Loader: {self.LoaderStrategy.__name__}")
         self.logger.info(f"Meta Data:\n{self.config}")
 
-    def scan(self, scan_dir: Path) -> dict[str, defaultdict[str, npt.NDArray]]:
+    def integrate(self, scan_dir: Path) -> dict[str, defaultdict[str, npt.NDArray]]:
         """
-        Processes a single scan directory.
-
-        Parameters:
-        - scan_dir (str): Directory path of the scan to process.
-
-        Returns:
-        - dict[str, npt.NDArray]: Dictionary containing stacked images from the scan.
+        Apply preprocessing to each multi-shots and average them.
         """
         self.logger.info(f"Starting scan: {scan_dir}")
 
@@ -83,20 +78,20 @@ class CoreIntegrater:
         try:
             return self.LoaderStrategy(hdf5_dir)
         except (KeyError, FileNotFoundError, ValueError) as e:
-            self.logger.exception(f"{type(e)} occurred while loading {hdf5_dir}")
-            return None
-        except Exception as e:
-            self.logger.exception(f"Failed to load {hdf5_dir}: {type(e)}: {e}")
+            self.logger.warning(f"{type(e)} occurred while loading {hdf5_dir}")
             return None
         # except Exception as e:
-        #     self.logger.critical(f"{type(e)} occurred while loading {hdf5_dir}")
-        #     raise
+        #     self.logger.exception(f"Failed to load {hdf5_dir}: {type(e)}: {e}")
+        #     return None
+        except Exception as e:
+            self.logger.critical(f"{type(e)} occurred while loading {hdf5_dir}")
+            raise
 
     def _preprocess_data(
         self,
         loader_strategy: RawDataLoader,
     ) -> dict[str, dict[str, Any]]:
-
+        """Preprocess data using the preprocessor and average the results."""
         preprocessed_data: dict[str, dict[str, Any]] = {}
         for name, preprocessor in self.preprocessor.items():
             data: dict[str, Any] = {}
@@ -112,10 +107,6 @@ class CoreIntegrater:
     def save(self, saver: SaverStrategy, run_n: int, scan_n: int):
         """
         Saves processed images using a specified saving strategy.
-
-        Parameters:
-        - saver (SaverStrategy): Saving strategy to use.
-        - comment (str, optional): Comment to append to the file name.
         """
         self.logger.info(f"Start to save as {saver.file_type.capitalize()}")
 

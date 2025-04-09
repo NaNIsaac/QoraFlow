@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np

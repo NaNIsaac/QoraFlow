@@ -1,8 +1,6 @@
 from pathlib import Path
 from typing import Generator, Optional
 
-from src.config import ExpConfig
-
 
 def get_run_scan_dir(mother: str | Path, run: int, scan: Optional[int] = None, *, sub_path: Optional[str] = None) -> Path:
     """
@@ -21,14 +19,9 @@ def get_run_scan_dir(mother: str | Path, run: int, scan: Optional[int] = None, *
 def make_run_scan_dir(mother: str | Path, run: int, scan: int, *, sub_path: str | Path = None) -> Path:
     """
     Create a nested directory structure for the given run and scan numbers.
+    Sub_path will not be created, but it will be returned as a path.
     """
-    mother = Path(mother)
-    mother.mkdir(parents=True, exist_ok=True)
-
-    path = mother / f'run={run:0>3d}'
-    path.mkdir(parents=True, exist_ok=True)
-
-    path = path / f'scan={scan:0>3d}'
+    path = Path(mother) / f'run={run:0>3d}' / f'scan={scan:0>3d}'
     path.mkdir(parents=True, exist_ok=True)
 
     return path / sub_path if sub_path else path
@@ -45,3 +38,9 @@ def get_scan_nums(path: str | Path, run_n: int) -> list[int]:
     run_dir: Path = get_run_scan_dir(path, run_n)
     scan_folders: Generator[Path, None, None] = run_dir.iterdir()
     return [int(scan_dir.stem.split("=")[1]) for scan_dir in scan_folders]
+
+
+if __name__ == "__main__":
+    mother: Path = Path()
+    path: Path = make_run_scan_dir(mother, 1, 2, sub_path='test')
+    print('path:', path)

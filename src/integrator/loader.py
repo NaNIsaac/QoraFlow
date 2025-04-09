@@ -83,6 +83,7 @@ class PalXFELLoader(RawDataLoader):
             if "detector" not in hf:
                 raise KeyError(f"Key 'detector' not found in {self.file}")
 
+            # DataFrame 생성
             image_group = hf[f'detector/{self.config.param.hutch.value}/{self.config.param.detector.value}/image']
             images_ts = np.array(image_group["block0_items"], dtype=np.int64)
             images = np.array(image_group["block0_values"], dtype=np.float64)
@@ -178,7 +179,8 @@ if __name__ == "__main__":
 
     config: ExpConfig = load_config()
     load_dir: str = config.path.load_dir
-    file: Path = get_run_scan_dir(load_dir, 141, 1, sub_path='p0077.h5')
+    print('load_dir:', load_dir)
+    file: Path = get_run_scan_dir(load_dir, 163, 1, sub_path='p0050.h5')
 
     start = time.time()
     loader = PalXFELLoader(file)

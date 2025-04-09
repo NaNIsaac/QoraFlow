@@ -6,9 +6,9 @@ from src.config import ExpConfig, load_config
 from src.filesystem import get_run_scan_dir, get_scan_nums
 from src.functional import compose
 from src.gui.select_roi import select_roi  # auto_roi
-from src.integrater.core import CoreIntegrater
-from src.integrater.loader import PalXFELLoader
-from src.integrater.saver import SaverStrategy, get_saver_strategy
+from src.integrator.core import CoreIntegrator
+from src.integrator.loader import PalXFELLoader
+from src.integrator.saver import SaverStrategy, get_saver_strategy
 from src.logger import Logger, setup_logger
 from src.preprocessor.image_qbpm_preprocessor import (  # subtract_dark_background,
     ImagesQbpmProcessor, create_pohang, create_threshold)
@@ -49,12 +49,12 @@ def integrate_scan(run_n: int, scan_n: int) -> None:
     for preprocessor_name in preprocessors:
         logger.info(f"preprocessor: {preprocessor_name}")
 
-    processor: CoreIntegrater = CoreIntegrater(PalXFELLoader, scan_dir, preprocessors, logger)
+    integrator: CoreIntegrator = CoreIntegrator(PalXFELLoader, scan_dir, preprocessors, logger)
 
     # Set and use SaverStrategy
     for saver_type in ["npz", "mat"]:
         saver: SaverStrategy = get_saver_strategy(saver_type)
-        processor.save(saver, run_n, scan_n)
+        integrator.save(saver, run_n, scan_n)
 
     logger.info(f"Processing run={run_n}, scan={scan_n} is complete")
 
