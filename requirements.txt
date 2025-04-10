@@ -14,7 +14,7 @@ scipy
 scikit-image
 scikit_learn
 lmfit
-roi-rectangle
+roi_rectangle
 ipykernel
 tuna
 lmfit
