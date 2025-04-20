@@ -48,7 +48,7 @@ def create_pohang(roi_rect: RoiRectangle) -> ImagesQbpmProcessor:
 def create_threshold(n: float) -> ImagesQbpmProcessor:
     def threshold(images_qbpm: ImagesQbpm) -> ImagesQbpm:
         images, qbpm = images_qbpm
-        return np.where(images > 4, images, 0), qbpm
+        return np.where(images > n, images, 0), qbpm
     return threshold
 
 
