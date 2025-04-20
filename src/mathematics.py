@@ -10,8 +10,53 @@ FWHM_COEFFICIENT: Final[float] = 2.35482  # FWHM_COEFFICIENT = 2 * np.sqrt(2 * n
 WAVELENGTH_COEFFICIENT: Final[float] = 12.398419843320025
 
 
-def reverse_axis(array: npt.NDArray):
-    return np.transpose(array, axes=range(array.ndim)[::-1])
+def axis_np2mat(arr: npt.NDArray) -> npt.NDArray:
+    """
+    Reorders the axes of an array to move the last two axes to the front.
+
+    This function is useful when treating the last two axes of an array
+    as matrix-like dimensions (e.g., for image patches, or per-pixel matrices),
+    and you want to operate on them first.
+
+    Parameters:
+        arr (np.ndarray): Input array of at least 2 dimensions.
+
+    Returns:
+        np.ndarray: Transposed array with the last two axes moved to the front.
+                    If the input has fewer than 2 dimensions, it is returned unchanged.
+
+    Example:
+        >>> arr = np.zeros((2, 3, 4, 5))
+        >>> axis_np2mat(arr).shape
+        (4, 5, 2, 3)
+    """
+    if arr.ndim < 2:
+        return arr
+    return np.transpose(arr, [arr.ndim - 2, arr.ndim - 1, *range(arr.ndim - 2)])
+
+
+def axis_mat2np(arr: npt.NDArray) -> npt.NDArray:
+    """
+    Reorders the axes of an array to move the first two axes to the end.
+
+    This is the inverse operation of `axis_np2mat`, restoring the original
+    axis order before applying `axis_np2mat`.
+
+    Parameters:
+        arr (np.ndarray): Input array of at least 2 dimensions.
+
+    Returns:
+        np.ndarray: Transposed array with the first two axes moved to the end.
+                    If the input has fewer than 2 dimensions, it is returned unchanged.
+
+    Example:
+        >>> arr = np.zeros((4, 5, 2, 3))
+        >>> axis_mat2np(arr).shape
+        (2, 3, 4, 5)
+    """
+    if arr.ndim < 2:
+        return arr
+    return np.transpose(arr, [*range(2, arr.ndim), 0, 1])
 
 
 def gaussian(x: npt.NDArray, a: float, mu: float, sig: float) -> npt.NDArray:
@@ -153,7 +198,9 @@ def non_outlier_indices_percentile(
 
 
 if __name__ == '__main__':
-    arr = np.array([1, 2, 3])
-    print(mul_delta_q(arr))
-    print(pixel_to_q(arr))
-    print(pixel_to_del_q(arr))
+    arr = np.zeros((2, 3, 4, 5))
+    print(f'{arr.shape = }')
+    mat_arr = axis_np2mat(arr)
+    print(f'{mat_arr.shape = }')
+    np_arr = axis_mat2np(mat_arr)
+    print(f'{np_arr.shape = }')
