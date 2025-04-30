@@ -23,6 +23,7 @@ class DataAnalyzer:
         FileNotFoundError: If the file does not exist.
         ValueError: If the file does not contain the required keys.
     """
+
     def __init__(self, file: str | Path, angle: int = 0) -> None:
         file = Path(file)
         if not file.exists():
@@ -42,7 +43,9 @@ class DataAnalyzer:
         else:
             self.pon_images: npt.NDArray = data["pon"]
         if angle:
-            self.poff_images = rotate(self.poff_images, angle, axes=(1, 2), reshape=False)
+            self.poff_images = rotate(
+                self.poff_images, angle, axes=(1, 2), reshape=False
+            )
             self.pon_images = rotate(self.pon_images, angle, axes=(1, 2), reshape=False)
 
         self.poff_images = np.maximum(0, self.poff_images)
@@ -60,9 +63,7 @@ class DataAnalyzer:
         return np.maximum(self.pon_images - self.poff_images, 0)
 
     def _roi_center_of_masses(
-        self,
-        roi_rect: RoiRectangle,
-        images: npt.NDArray
+        self, roi_rect: RoiRectangle, images: npt.NDArray
     ) -> tuple[npt.NDArray, npt.NDArray]:
         roi_images = roi_rect.slice(images)
         height, width = roi_rect.height, roi_rect.width
@@ -76,9 +77,7 @@ class DataAnalyzer:
         return x_centroids, y_centroids
 
     def _roi_gaussian(
-        self,
-        roi_rect: RoiRectangle,
-        images: npt.NDArray
+        self, roi_rect: RoiRectangle, images: npt.NDArray
     ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
 
         roi_images = roi_rect.slice(images)
@@ -89,7 +88,9 @@ class DataAnalyzer:
         com_ys = []
 
         for image in roi_images:
-            max_y, max_x = np.unravel_index(np.argmax(image), image.shape)  # pylint: disable=unbalanced-tuple-unpacking
+            max_y, max_x = np.unravel_index(
+                np.argmax(image), image.shape
+            )  # pylint: disable=unbalanced-tuple-unpacking
 
             x: npt.NDArray = np.arange(0, width)
             y: npt.NDArray = np.arange(0, height)
@@ -97,14 +98,22 @@ class DataAnalyzer:
             x_data = image.sum(axis=0)
             y_data = image.sum(axis=1)
 
-            initial_guess_x = [x_data[max_x], max_x, (np.max(x_data) - np.min(x_data)) / 4]
+            initial_guess_x = [
+                x_data[max_x],
+                max_x,
+                (np.max(x_data) - np.min(x_data)) / 4,
+            ]
             try:
                 params_x = curve_fit(gaussian, x, x_data, p0=initial_guess_x)[0]
             except RuntimeError as e:
                 print(e, ": x")
                 params_x = [np.nan, np.nan, np.nan]
 
-            initial_guess_y = [y_data[max_y], max_y, (np.max(y_data) - np.min(y_data)) / 4]
+            initial_guess_y = [
+                y_data[max_y],
+                max_y,
+                (np.max(y_data) - np.min(y_data)) / 4,
+            ]
             try:
                 params_y = curve_fit(gaussian, y, y_data, p0=initial_guess_y)[0]
             except RuntimeError as e:
@@ -140,22 +149,21 @@ class DataAnalyzer:
         #     roi_rect, self.pon_images
         # )
 
-        roi_df = pd.DataFrame(data={
-            "poff_com_x": mul_delta_q(poff_com_x - poff_com_x[0]),
-            "poff_com_y": mul_delta_q(poff_com_y - poff_com_y[0]),
-            "poff_intensity": poff_intensity / poff_intensity[0],
-            "pon_com_x": mul_delta_q(pon_com_x - pon_com_x[0]),
-            "pon_com_y": mul_delta_q(pon_com_y - pon_com_y[0]),
-            "pon_intensity": pon_intensity / pon_intensity[0],
-
-            # "poff_gussian_com_x": poff_gussian_com_x,
-            # "poff_gussian_com_y": poff_gussian_com_y,
-            # "poff_guassain_intensity": poff_guassain_intensity / poff_guassain_intensity[0],
-
-            # "pon_gussian_com_x": pon_gussian_com_x,
-            # "pon_gussian_com_y": pon_gussian_com_y,
-            # "pon_guassain_intensity": pon_guassain_intensity / pon_guassain_intensity[0],
-
-        })
+        roi_df = pd.DataFrame(
+            data={
+                "poff_com_x": mul_delta_q(poff_com_x - poff_com_x[0]),
+                "poff_com_y": mul_delta_q(poff_com_y - poff_com_y[0]),
+                "poff_intensity": poff_intensity / poff_intensity[0],
+                "pon_com_x": mul_delta_q(pon_com_x - pon_com_x[0]),
+                "pon_com_y": mul_delta_q(pon_com_y - pon_com_y[0]),
+                "pon_intensity": pon_intensity / pon_intensity[0],
+                # "poff_gussian_com_x": poff_gussian_com_x,
+                # "poff_gussian_com_y": poff_gussian_com_y,
+                # "poff_guassain_intensity": poff_guassain_intensity / poff_guassain_intensity[0],
+                # "pon_gussian_com_x": pon_gussian_com_x,
+                # "pon_gussian_com_y": pon_gussian_com_y,
+                # "pon_guassain_intensity": pon_guassain_intensity / pon_guassain_intensity[0],
+            }
+        )
         roi_df = roi_df.set_index(self.delay)
         return roi_df

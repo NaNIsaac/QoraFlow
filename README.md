@@ -1,5 +1,14 @@
 # PAL-XFEL Data Handling Toolkit for Time-Resolved Ultrafast Experiments
 
+# Project Heritage: Legacy System Attribution
+## Legacy Codebase Origin
+
+This project builds upon and refactors the legacy system **XFEL_data**, originally developed by:
+- Name: Kim Jooheun
+- GitHub: @paulpeterkim
+- Role: Lead Developer & System Architect
+- Active Years: 2021–2023
+- Contact: paulpeterkim@gmail.com
 ---
 # Usage
 ## Prerequisites

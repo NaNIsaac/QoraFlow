@@ -30,9 +30,7 @@ def ransac_regression(
 
 
 def get_linear_regression_confidence_bounds(
-    y: npt.NDArray,
-    x: npt.NDArray,
-    sigma: float
+    y: npt.NDArray, x: npt.NDArray, sigma: float
 ) -> npt.NDArray:
     """
     Get lower and upper bounds for data points based on their confidence interval in a linear regression model.
@@ -60,6 +58,7 @@ def get_linear_regression_confidence_bounds(
     This method assumes a linear relationship in the data. For strong non-linearities,
     a different approach may be necessary.
     """
+
     def linear_model(x, m, b):
         return m * x + b
 
@@ -70,7 +69,7 @@ def get_linear_regression_confidence_bounds(
     y_fit = linear_model(x, m, b)
 
     # Calculate upper and lower bounds considering both slope and intercept errors
-    error = np.sqrt((m_err * x)**2 + b_err**2)
+    error = np.sqrt((m_err * x) ** 2 + b_err**2)
     upper_bound = y_fit + error * sigma
     lower_bound = y_fit - error * sigma
 
@@ -106,7 +105,9 @@ def filter_images_qbpm_by_linear_model(
     on the linear regression model and confidence interval.
     """
     intensites = images.sum(axis=(1, 2))
-    lower_bound, upper_bound, _ = get_linear_regression_confidence_bounds(intensites, qbpm, sigma)
+    lower_bound, upper_bound, _ = get_linear_regression_confidence_bounds(
+        intensites, qbpm, sigma
+    )
     mask = np.logical_and(intensites >= lower_bound, intensites <= upper_bound)
 
     return images[mask], qbpm[mask]

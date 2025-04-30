@@ -29,7 +29,14 @@ class RoiSelector:
                 self.fx, self.fy = self.ix, self.iy
                 if self.rect is not None:
                     self.rect.remove()
-                self.rect = patches.Rectangle((self.ix, self.iy), 1, 1, linewidth=1, edgecolor='r', facecolor='none')
+                self.rect = patches.Rectangle(
+                    (self.ix, self.iy),
+                    1,
+                    1,
+                    linewidth=1,
+                    edgecolor="r",
+                    facecolor="none",
+                )
                 self.ax.add_patch(self.rect)
                 plt.draw()
 
@@ -58,9 +65,9 @@ class RoiSelector:
         fig, self.ax = plt.subplots(figsize=(10, 6))
         self.ax.imshow(image)
 
-        fig.canvas.mpl_connect('button_press_event', self.on_mouse_press)
-        fig.canvas.mpl_connect('button_release_event', self.on_mouse_release)
-        fig.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
+        fig.canvas.mpl_connect("button_press_event", self.on_mouse_press)
+        fig.canvas.mpl_connect("button_release_event", self.on_mouse_release)
+        fig.canvas.mpl_connect("motion_notify_event", self.on_mouse_move)
 
         plt.show()
 
@@ -71,7 +78,9 @@ class RoiSelector:
         return (x1, y1, x2, y2)
 
 
-def select_roi_by_run_scan(run: int, scan: int, index_mode: Optional[int] = None) -> Optional[RoiRectangle]:
+def select_roi_by_run_scan(
+    run: int, scan: int, index_mode: Optional[int] = None
+) -> Optional[RoiRectangle]:
     config: ExpConfig = load_config()
     load_dir = config.path.load_dir
     scan_dir = get_run_scan_dir(load_dir, run, scan)
@@ -97,7 +106,9 @@ def get_roi_auto(
 ) -> RoiRectangle:
     """get roi_rect by max pixel"""
     center = np.unravel_index(np.argmax(image), image.shape)[::-1]
-    return RoiRectangle(center[0] - width, center[1] - width, center[0] + width, center[1] + width)
+    return RoiRectangle(
+        center[0] - width, center[1] - width, center[0] + width, center[1] + width
+    )
 
 
 if __name__ == "__main__":

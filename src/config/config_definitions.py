@@ -8,6 +8,7 @@ Classes:
     - `ExperimentConfiguration`: A dataclass representing the complete configuration for an experiment,
     combining configuration parameters and paths.
 """
+
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -34,6 +35,7 @@ class ExpParams(BaseModel):
         y1 (int): The y1 setting.
         y2 (int): The y2 setting.
     """
+
     hutch: Hutch = Hutch.EH1
     detector: Detector = Detector.JUNGFRAU2
     xray: Xray = Xray.HARD
@@ -55,6 +57,7 @@ class ExpPaths(BaseModel):
         load_dir (Path): The load directory path.
         anaylsis_dir (Path): The save directory path.
     """
+
     log_dir: Path = Path()
 
     load_dir: Path = Path()
@@ -74,6 +77,7 @@ class ExpConfig(BaseModel):
         param (ConfigurationParameters): The configuration parameters.
         path (ConfigurationPaths): The configuration paths.
     """
+
     runs: list[int] = Field(default_factory=list)
     param: ExpParams = ExpParams()
     path: ExpPaths = ExpPaths()
@@ -82,26 +86,26 @@ class ExpConfig(BaseModel):
 if __name__ == "__main__":
     config_dict = {
         "runs": [1, 2, 3],
-        'path': {
-            'load_dir': 'your/path/aaa',
-            'analysis_dir': 'your/path/bbb',
-            'output_dir': 'Image',
-            'mat_dir': 'mat_files',
-            'processed_dir': 'npz_files',
+        "path": {
+            "load_dir": "your/path/aaa",
+            "analysis_dir": "your/path/bbb",
+            "output_dir": "Image",
+            "mat_dir": "mat_files",
+            "processed_dir": "npz_files",
         },
-        'param': {
-            'xray': 'HX',
-            'detector': 'jungfrau2',
-            'pump_setting': '15HZ',
-            'hutch': 'eh2',
-            'sdd': 1.3,
-            'dps': 7.5e-05,
-            'beam_energy': 9.7,
-            'x1': 0,
-            'x2': 1,
-            'y1': 2,
-            'y2': 3
-        }
+        "param": {
+            "xray": "HX",
+            "detector": "jungfrau2",
+            "pump_setting": "15HZ",
+            "hutch": "eh2",
+            "sdd": 1.3,
+            "dps": 7.5e-05,
+            "beam_energy": 9.7,
+            "x1": 0,
+            "x2": 1,
+            "y1": 2,
+            "y2": 3,
+        },
     }
 
     config: ExpConfig = ExpConfig(**config_dict)
