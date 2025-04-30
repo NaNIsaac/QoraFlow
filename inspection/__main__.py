@@ -8,7 +8,9 @@ from src.config import load_config
 from src.filesystem import get_run_scan_dir
 
 
-def list_files_in_directory(directory: str, show_size: bool, show_modified: bool, show_hdf5_keys: bool) -> None:
+def list_files_in_directory(
+    directory: str, show_size: bool, show_modified: bool, show_hdf5_keys: bool
+) -> None:
     """List files in the given directory, optionally showing size, modification date, and HDF5 keys information."""
     if not os.path.exists(directory):
         raise click.ClickException(f"Directory '{directory}' not found.")
@@ -27,26 +29,26 @@ def list_files_in_directory(directory: str, show_size: bool, show_modified: bool
 
             if show_size:
                 file_size = os.path.getsize(file_path)
-                line.append(f'size {file_size} (bytes)')
+                line.append(f"size {file_size} (bytes)")
 
             if show_modified:
                 time = os.path.getmtime(file_path)
-                date = datetime.fromtimestamp(time).strftime('%Y-%m-%d %H:%M:%S')
-                line.append(f'date {date}')
+                date = datetime.fromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S")
+                line.append(f"date {date}")
 
-            if show_hdf5_keys and file_name.endswith('.h5'):
-                with h5py.File(file_path, 'r') as hdf5_file:
+            if show_hdf5_keys and file_name.endswith(".h5"):
+                with h5py.File(file_path, "r") as hdf5_file:
                     keys = list(hdf5_file.keys())
                     line.append(f'keys {", ".join(keys)}')
 
-            click.echo(' '.join(line))
+            click.echo(" ".join(line))
 
 
 @click.command()
-@click.argument('run_n', type=int)
-@click.option('--size', is_flag=True, help='Show detailed size information')
-@click.option('--date', is_flag=True, help='Show file modification date')
-@click.option('--keys', is_flag=True, help='Show keys contained in HDF5 files')
+@click.argument("run_n", type=int)
+@click.option("--size", is_flag=True, help="Show detailed size information")
+@click.option("--date", is_flag=True, help="Show file modification date")
+@click.option("--keys", is_flag=True, help="Show keys contained in HDF5 files")
 def file_check(run_n: int, size: bool, date: bool, keys: bool) -> None:
     """List files of the run directory"""
     config = load_config()
@@ -56,5 +58,5 @@ def file_check(run_n: int, size: bool, date: bool, keys: bool) -> None:
     list_files_in_directory(str(run_dir), size, date, keys)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     file_check()

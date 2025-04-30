@@ -14,7 +14,12 @@ def load_image(run_n: int) -> np.ndarray:
     """Load image data from npz file."""
     config = load_config()
     scan_n: int = 1
-    npz_file: Path = get_run_scan_dir(config.path.processed_dir, run_n, scan_n, sub_path=f'run={run_n:04}_scan={scan_n:04}.npz')
+    npz_file: Path = get_run_scan_dir(
+        config.path.processed_dir,
+        run_n,
+        scan_n,
+        sub_path=f"run={run_n:04}_scan={scan_n:04}.npz",
+    )
 
     # Check if the file exists
     if not npz_file.exists():
@@ -22,14 +27,16 @@ def load_image(run_n: int) -> np.ndarray:
 
     data = load_npz(npz_file)
 
-    if 'poff' in data:
-        image = data['poff'].mean(0)
+    if "poff" in data:
+        image = data["poff"].mean(0)
     else:
-        image = data['pon'].mean(0)
+        image = data["pon"].mean(0)
     return image
 
 
-def process_image(image: np.ndarray, is_log: bool, vmin: float, vmax: float) -> np.ndarray:
+def process_image(
+    image: np.ndarray, is_log: bool, vmin: float, vmax: float
+) -> np.ndarray:
     """Process image with specified log scaling and clipping."""
     adjusted_image = np.clip(image, vmin, vmax)
 
@@ -45,11 +52,15 @@ def select_roi_from_image(image: np.ndarray) -> tuple[int, int, int, int]:
 
 
 @click.command()
-@click.argument('run_n', type=int)
-@click.option('--roi', is_flag=True, help="Flag to trigger ROI selection.")
-@click.option('--log', is_flag=True, help="Flag to apply log1p to the image.")
-@click.option('--vmin', type=float, default=0.0, help="Minimum value for image clipping.")
-@click.option('--vmax', type=float, default=np.inf, help="Maximum value for image clipping.")
+@click.argument("run_n", type=int)
+@click.option("--roi", is_flag=True, help="Flag to trigger ROI selection.")
+@click.option("--log", is_flag=True, help="Flag to apply log1p to the image.")
+@click.option(
+    "--vmin", type=float, default=0.0, help="Minimum value for image clipping."
+)
+@click.option(
+    "--vmax", type=float, default=np.inf, help="Maximum value for image clipping."
+)
 def gui_cli(run_n: int, roi: bool, log: bool, vmin: float, vmax: float) -> None:
     """
     Command-line interface to process and optionally display ROI of an image.
@@ -72,5 +83,5 @@ def gui_cli(run_n: int, roi: bool, log: bool, vmin: float, vmax: float) -> None:
         select_roi_from_image(processed_image)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     gui_cli()

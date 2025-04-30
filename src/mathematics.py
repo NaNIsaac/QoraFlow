@@ -6,7 +6,9 @@ from scipy.integrate import dblquad, quad
 
 from src.config import load_config
 
-FWHM_COEFFICIENT: Final[float] = 2.35482  # FWHM_COEFFICIENT = 2 * np.sqrt(2 * np.log(2))
+FWHM_COEFFICIENT: Final[float] = (
+    2.35482  # FWHM_COEFFICIENT = 2 * np.sqrt(2 * np.log(2))
+)
 WAVELENGTH_COEFFICIENT: Final[float] = 12.398419843320025
 
 
@@ -60,7 +62,7 @@ def axis_mat2np(arr: npt.NDArray) -> npt.NDArray:
 
 
 def gaussian(x: npt.NDArray, a: float, mu: float, sig: float) -> npt.NDArray:
-    return a * np.exp(-(x - mu) ** 2 / (2 * sig ** 2))
+    return a * np.exp(-((x - mu) ** 2) / (2 * sig**2))
 
 
 def integrate_FWHM(a: float, mu: float, sig: float) -> float:
@@ -70,10 +72,14 @@ def integrate_FWHM(a: float, mu: float, sig: float) -> float:
 
 
 def gaussian2d(
-    xy, amplitude: float,
-    x0: float, y0: float,
-    sigma_x: float, sigma_y: float,
-    theta: float, offset: float
+    xy,
+    amplitude: float,
+    x0: float,
+    y0: float,
+    sigma_x: float,
+    sigma_y: float,
+    theta: float,
+    offset: float,
 ) -> npt.NDArray:
     """
     Calculate the 2D Gaussian distribution at the given coordinates.
@@ -92,22 +98,32 @@ def gaussian2d(
         numpy.ndarray: A 1D array containing the values of the 2D Gaussian distribution flattened into a 1D array.
     """
     x, y = xy
-    a = (np.cos(theta) ** 2) / (2 * sigma_x ** 2) + (np.sin(theta) ** 2) / (2 * sigma_y ** 2)
-    b = -(np.sin(2 * theta)) / (4 * sigma_x ** 2) + (np.sin(2 * theta)) / (4 * sigma_y ** 2)
-    c = (np.sin(theta) ** 2) / (2 * sigma_x ** 2) + (np.cos(theta) ** 2) / (2 * sigma_y ** 2)
-    g = offset + amplitude * np.exp(-(a * ((x - x0) ** 2) + 2 * b * (x - x0) * (y - y0) + c * ((y - y0) ** 2)))
+    a = (np.cos(theta) ** 2) / (2 * sigma_x**2) + (np.sin(theta) ** 2) / (
+        2 * sigma_y**2
+    )
+    b = -(np.sin(2 * theta)) / (4 * sigma_x**2) + (np.sin(2 * theta)) / (4 * sigma_y**2)
+    c = (np.sin(theta) ** 2) / (2 * sigma_x**2) + (np.cos(theta) ** 2) / (
+        2 * sigma_y**2
+    )
+    g = offset + amplitude * np.exp(
+        -(a * ((x - x0) ** 2) + 2 * b * (x - x0) * (y - y0) + c * ((y - y0) ** 2))
+    )
     return g.ravel()
 
 
 def integrate_fwhm_2d(
     amplitude: float,
-    xo: float, yo: float,
-    sigma_x: float, sigma_y: float,
-    theta: float, offset: float
+    xo: float,
+    yo: float,
+    sigma_x: float,
+    sigma_y: float,
+    theta: float,
+    offset: float,
 ) -> float:
     """
     Calculate the integral of a 2D Gaussian with an offset over its FWHM
     """
+
     def integrand(y, x):
         xy = np.meshgrid(x, y)
         return gaussian2d(xy, amplitude, xo, yo, sigma_x, sigma_y, theta, offset)
@@ -125,7 +141,9 @@ def integrate_fwhm_2d(
     y_upper = y0 + fwhm_y * 0.5
 
     # Perform the double integration
-    result, _ = dblquad(integrand, y_lower, y_upper, lambda x: x_lower, lambda x: x_upper)
+    result, _ = dblquad(
+        integrand, y_lower, y_upper, lambda x: x_lower, lambda x: x_upper
+    )
     return result
 
 
@@ -166,9 +184,7 @@ def mul_delta_q(pixels: npt.NDArray) -> npt.NDArray:
 
 
 def non_outlier_indices_percentile(
-    arr: npt.NDArray,
-    lower_percentile: float,
-    upper_percentile: float
+    arr: npt.NDArray, lower_percentile: float, upper_percentile: float
 ) -> npt.NDArray[np.bool_]:
     """
     Get the indices of non-outliers in a NumPy array.
@@ -197,10 +213,10 @@ def non_outlier_indices_percentile(
     return conditions
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     arr = np.zeros((2, 3, 4, 5))
-    print(f'{arr.shape = }')
+    print(f"{arr.shape = }")
     mat_arr = axis_np2mat(arr)
-    print(f'{mat_arr.shape = }')
+    print(f"{mat_arr.shape = }")
     np_arr = axis_mat2np(mat_arr)
-    print(f'{np_arr.shape = }')
+    print(f"{np_arr.shape = }")

@@ -13,11 +13,11 @@ def main() -> None:
     """Profile program with cProfile module and visualize with tuna."""
     config: ExpConfig = load_config()
     load_dir: str = config.path.load_dir
-    file: Path = get_run_scan_dir(load_dir, 161, 1, sub_path='p0010.h5')
+    file: Path = get_run_scan_dir(load_dir, 161, 1, sub_path="p0010.h5")
 
-    logging_file: Path = Path('logs/profiling/profiling.log')
+    logging_file: Path = Path("logs/profiling/profiling.log")
     # logging Setting
-    logging.basicConfig(filename=logging_file, level=logging.INFO, format='%(message)s')
+    logging.basicConfig(filename=logging_file, level=logging.INFO, format="%(message)s")
 
     # Create a profiler object
     profiler = cProfile.Profile()
@@ -35,7 +35,7 @@ def main() -> None:
     # Create a Stats object and sort the results by cumulative time
     stats = pstats.Stats(profiler)
     stats.strip_dirs()
-    stats.sort_stats('cumulative')
+    stats.sort_stats("cumulative")
 
     # Redirect the stats output to a StringIO object
     output_stream = io.StringIO()
@@ -51,7 +51,7 @@ def main() -> None:
     logging.info(profiling_results)
 
     # Save the profiling results to a file
-    stats_file: Path = Path('logs/profiling/profiling.prof')
+    stats_file: Path = Path("logs/profiling/profiling.prof")
     stats.dump_stats(stats_file)
 
     print(f"Profiling results logged to '{logging_file}'")

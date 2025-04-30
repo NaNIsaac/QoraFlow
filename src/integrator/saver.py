@@ -11,13 +11,20 @@ from src.filesystem import make_run_scan_dir
 
 def get_file_base_name(run_n: int, scan_n: int) -> str:
     """Return formated file name"""
-    return f'run={run_n:04}_scan={scan_n:04}'
+    return f"run={run_n:04}_scan={scan_n:04}"
 
 
 class SaverStrategy(ABC):
     """Save data_dict to a file."""
+
     @abstractmethod
-    def save(self, run_n: int, scan_n: int, data_dict: dict[str, npt.NDArray], comment: str = ""):
+    def save(
+        self,
+        run_n: int,
+        scan_n: int,
+        data_dict: dict[str, npt.NDArray],
+        comment: str = "",
+    ):
         pass
 
     @property
@@ -36,7 +43,13 @@ class MatSaverStrategy(SaverStrategy):
     def __init__(self):
         self._file: str = None
 
-    def save(self, run_n: int, scan_n: int, data_dict: dict[str, npt.NDArray], comment: str = ""):
+    def save(
+        self,
+        run_n: int,
+        scan_n: int,
+        data_dict: dict[str, npt.NDArray],
+        comment: str = "",
+    ):
         comment = "_" + comment if comment else ""
         config: ExpConfig = load_config()
         mat_dir: Path = config.path.mat_dir
@@ -63,13 +76,21 @@ class NpzSaverStrategy(SaverStrategy):
     def __init__(self):
         self._file: str = None
 
-    def save(self, run_n: int, scan_n: int, data_dict: dict[str, npt.NDArray], comment: str = ""):
+    def save(
+        self,
+        run_n: int,
+        scan_n: int,
+        data_dict: dict[str, npt.NDArray],
+        comment: str = "",
+    ):
         comment = "_" + comment if comment else ""
         config = load_config()
         processed_dir = config.path.processed_dir
         processed_dir.mkdir(parents=True, exist_ok=True)
-        file_name = get_file_base_name(run_n, scan_n) + comment + '.npz'
-        npz_file: Path = make_run_scan_dir(processed_dir, run_n, scan_n, sub_path=file_name)
+        file_name = get_file_base_name(run_n, scan_n) + comment + ".npz"
+        npz_file: Path = make_run_scan_dir(
+            processed_dir, run_n, scan_n, sub_path=file_name
+        )
         np.savez(npz_file, **data_dict)
         self._file = npz_file
 
@@ -85,9 +106,9 @@ class NpzSaverStrategy(SaverStrategy):
 def get_saver_strategy(file_type: str) -> SaverStrategy:
     """Get SaverStrategy by file type."""
     match file_type:
-        case 'mat':
+        case "mat":
             return MatSaverStrategy()
-        case 'npz':
+        case "npz":
             return NpzSaverStrategy()
         case _:
             raise ValueError(f"Unsupported file type: {file_type}")

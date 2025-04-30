@@ -45,6 +45,7 @@ class RawDataLoader(ABC):
 
 class PalXFELLoader(RawDataLoader):
     """Load hdf5 file and remove unmatching data."""
+
     def __init__(self, file: str):
         """
         Initializes the HDF5FileLoader by loading
@@ -59,13 +60,13 @@ class PalXFELLoader(RawDataLoader):
         self.file: str = file
         self.config: ExpConfig = load_config()
 
-        metadata: pd.DataFrame = pd.read_hdf(self.file, key='metadata')
+        metadata: pd.DataFrame = pd.read_hdf(self.file, key="metadata")
         merged_df: pd.DataFrame = self._get_merged_df(metadata)
         if merged_df.empty:
             raise ValueError(f"No matching data found in {self.file}")
 
-        self.images: npt.NDArray[np.float32] = np.stack(merged_df['image'].values)
-        self.qbpm: npt.NDArray[np.float32] = np.stack(merged_df['qbpm'].values)
+        self.images: npt.NDArray[np.float32] = np.stack(merged_df["image"].values)
+        self.qbpm: npt.NDArray[np.float32] = np.stack(merged_df["qbpm"].values)
         self.pump_state: npt.NDArray[np.bool_] = self._get_pump_mask(merged_df)
         self.delay: npt.NDArray[np.float64] = self._get_delay(merged_df)
 
@@ -84,21 +85,37 @@ class PalXFELLoader(RawDataLoader):
                 raise KeyError(f"Key 'detector' not found in {self.file}")
 
             # DataFrame 생성
-            image_group = hf[f'detector/{self.config.param.hutch.value}/{self.config.param.detector.value}/image']
+            image_group = hf[
+                f"detector/{self.config.param.hutch.value}/{self.config.param.detector.value}/image"
+            ]
             images_ts = np.array(image_group["block0_items"], dtype=np.int64)
             images = np.array(image_group["block0_values"], dtype=np.float64)
-            qbpm_group = hf[f'qbpm/{self.config.param.hutch.value}/qbpm1']
-            qbpm_ts = np.array(qbpm_group['waveforms.ch1/axis1'], dtype=np.int64)
+            qbpm_group = hf[f"qbpm/{self.config.param.hutch.value}/qbpm1"]
+            qbpm_ts = np.array(qbpm_group["waveforms.ch1/axis1"], dtype=np.int64)
             qbpm = np.sum(
                 np.stack(
-                [qbpm_group[f'waveforms.ch{i + 1}/block0_values'] for i in range(4)], axis=0, dtype=np.float32
-                ), axis=(0, 2)
+                    [
+                        qbpm_group[f"waveforms.ch{i + 1}/block0_values"]
+                        for i in range(4)
+                    ],
+                    axis=0,
+                    dtype=np.float32,
+                ),
+                axis=(0, 2),
             )
 
-        image_df = pd.DataFrame({"timestamp": images_ts, "image": list(images)}).set_index('timestamp')
-        qbpm_df = pd.DataFrame({"timestamp": qbpm_ts, "qbpm": list(qbpm)}).set_index('timestamp')
-        merged_df = pd.merge(image_df, qbpm_df, left_index=True, right_index=True, how='inner')
-        return pd.merge(metadata, merged_df, left_index=True, right_index=True, how='inner')
+        image_df = pd.DataFrame(
+            {"timestamp": images_ts, "image": list(images)}
+        ).set_index("timestamp")
+        qbpm_df = pd.DataFrame({"timestamp": qbpm_ts, "qbpm": list(qbpm)}).set_index(
+            "timestamp"
+        )
+        merged_df = pd.merge(
+            image_df, qbpm_df, left_index=True, right_index=True, how="inner"
+        )
+        return pd.merge(
+            metadata, merged_df, left_index=True, right_index=True, how="inner"
+        )
 
     def _get_delay(self, merged_df: pd.DataFrame) -> np.float64 | float:
         """
@@ -111,9 +128,9 @@ class PalXFELLoader(RawDataLoader):
         - Union[np.float64, float]: Delay value or NaN if not found.
         """
         if "th_value" in merged_df:
-            return np.asarray(merged_df['th_value'], dtype=np.float64)[0]
+            return np.asarray(merged_df["th_value"], dtype=np.float64)[0]
         if "delay_value" in merged_df:
-            return np.asarray(merged_df['delay_value'], dtype=np.float64)[0]
+            return np.asarray(merged_df["delay_value"], dtype=np.float64)[0]
         return np.nan
 
     def _get_pump_mask(self, merged_df: pd.DataFrame) -> npt.NDArray[np.bool_]:
@@ -129,8 +146,10 @@ class PalXFELLoader(RawDataLoader):
         if self.config.param.pump_setting is Hertz.ZERO:
             return np.zeros(merged_df.shape[0], dtype=np.bool_)
         return np.asarray(
-            merged_df[f'timestamp_info.RATE_{self.config.param.xray.value}_{self.config.param.pump_setting.value}'],
-            dtype=np.bool_
+            merged_df[
+                f"timestamp_info.RATE_{self.config.param.xray.value}_{self.config.param.pump_setting.value}"
+            ],
+            dtype=np.bool_,
         )
 
     def get_data(self) -> dict[str, npt.NDArray]:
@@ -166,7 +185,9 @@ def get_hdf5_images(file: str, config: ExpConfig) -> npt.NDArray:
             raise KeyError(f"Key 'detector' not found in {file}")
 
         images = np.asarray(
-            hf[f'detector/{config.param.hutch.value}/{config.param.detector.value}/image/block0_values']
+            hf[
+                f"detector/{config.param.hutch.value}/{config.param.detector.value}/image/block0_values"
+            ]
         )
 
         return np.maximum(images, 0)
@@ -179,8 +200,8 @@ if __name__ == "__main__":
 
     config: ExpConfig = load_config()
     load_dir: str = config.path.load_dir
-    print('load_dir:', load_dir)
-    file: Path = get_run_scan_dir(load_dir, 163, 1, sub_path='p0050.h5')
+    print("load_dir:", load_dir)
+    file: Path = get_run_scan_dir(load_dir, 163, 1, sub_path="p0050.h5")
 
     start = time.time()
     loader = PalXFELLoader(file)

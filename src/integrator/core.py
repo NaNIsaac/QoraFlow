@@ -17,16 +17,19 @@ class CoreIntegrator:
     """
     Use ETL Pattern
     """
+
     def __init__(
         self,
         LoaderStrategy: type[RawDataLoader],
         scan_dir: str | Path,
         preprocessor: Optional[dict[str, ImagesQbpmProcessor]] = None,
-        logger: Optional[Logger] = None
+        logger: Optional[Logger] = None,
     ) -> None:
         self.LoaderStrategy: type[RawDataLoader] = LoaderStrategy
         scan_dir = Path(scan_dir)
-        self.preprocessor: dict[str, ImagesQbpmProcessor] = preprocessor or {"no_processing": lambda x: x}
+        self.preprocessor: dict[str, ImagesQbpmProcessor] = preprocessor or {
+            "no_processing": lambda x: x
+        }
         self.logger: Logger = logger or setup_logger()
         self.result: dict[str, defaultdict[str, npt.NDArray]] = self.integrate(scan_dir)
         self.config: ExpConfig = load_config()
@@ -44,7 +47,9 @@ class CoreIntegrator:
             name: defaultdict(list) for name in self.preprocessor
         }
 
-        hdf5_files: list[Path] = sorted(scan_dir.glob("*.h5"), key=lambda file: int(file.stem[1:]))
+        hdf5_files: list[Path] = sorted(
+            scan_dir.glob("*.h5"), key=lambda file: int(file.stem[1:])
+        )
 
         desc = str(Path(*scan_dir.parts[-2:]))
         pbar = tqdm(hdf5_files, total=len(hdf5_files), desc=desc)
@@ -97,10 +102,14 @@ class CoreIntegrator:
             data: dict[str, Any] = {}
             loader_dict = loader_strategy.get_data()
             if "pon" in loader_dict:
-                data['pon'] = preprocessor((loader_dict['pon'], loader_dict['pon_qbpm']))[0].mean(axis=0)
-            if 'poff' in loader_dict:
-                data['poff'] = preprocessor((loader_dict['poff'], loader_dict['poff_qbpm']))[0].mean(axis=0)
-            data["delay"] = loader_dict['delay']
+                data["pon"] = preprocessor(
+                    (loader_dict["pon"], loader_dict["pon_qbpm"])
+                )[0].mean(axis=0)
+            if "poff" in loader_dict:
+                data["poff"] = preprocessor(
+                    (loader_dict["poff"], loader_dict["poff_qbpm"])
+                )[0].mean(axis=0)
+            data["delay"] = loader_dict["delay"]
             preprocessed_data[name] = data
         return preprocessed_data
 

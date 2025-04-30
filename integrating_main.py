@@ -11,7 +11,10 @@ from src.integrator.loader import PalXFELLoader
 from src.integrator.saver import SaverStrategy, get_saver_strategy
 from src.logger import Logger, setup_logger
 from src.preprocessor.image_qbpm_preprocessor import (  # subtract_dark_background,
-    ImagesQbpmProcessor, create_pohang, create_threshold)
+    ImagesQbpmProcessor,
+    create_pohang,
+    create_threshold,
+)
 
 
 logger: Logger = setup_logger()
@@ -49,7 +52,9 @@ def integrate_scan(run_n: int, scan_n: int) -> None:
     for preprocessor_name in preprocessors:
         logger.info(f"preprocessor: {preprocessor_name}")
 
-    integrator: CoreIntegrator = CoreIntegrator(PalXFELLoader, scan_dir, preprocessors, logger)
+    integrator: CoreIntegrator = CoreIntegrator(
+        PalXFELLoader, scan_dir, preprocessors, logger
+    )
 
     # Set and use SaverStrategy
     for saver_type in ["npz", "mat"]:

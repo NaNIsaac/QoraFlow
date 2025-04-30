@@ -16,24 +16,29 @@ def get_metadata_roi(scan_dir: str | Path, config: ExpConfig) -> RoiRectangle:
     scan_dir = Path(scan_dir)
     files = list(scan_dir.glob("*.h5"))
     file: Path = files[0]
-    metadata = pd.read_hdf(file, key='metadata')
+    metadata = pd.read_hdf(file, key="metadata")
     roi_coord = np.array(
         metadata[
-            f'detector_{config.param.hutch.value}_{config.param.detector.value}_parameters.ROI'
+            f"detector_{config.param.hutch.value}_{config.param.detector.value}_parameters.ROI"
         ].iloc[0][0]
     )
 
-    roi = np.array([
-        roi_coord[config.param.x1],
-        roi_coord[config.param.y1],
-        roi_coord[config.param.x2],
-        roi_coord[config.param.y2]
-    ], dtype=np.int_)
+    roi = np.array(
+        [
+            roi_coord[config.param.x1],
+            roi_coord[config.param.y1],
+            roi_coord[config.param.x2],
+            roi_coord[config.param.y2],
+        ],
+        dtype=np.int_,
+    )
 
     return RoiRectangle.from_tuple(roi)
 
 
-def select_roi(scan_dir: str | Path, config: ExpConfig, index_mode: Optional[int] = None) -> RoiRectangle:
+def select_roi(
+    scan_dir: str | Path, config: ExpConfig, index_mode: Optional[int] = None
+) -> RoiRectangle:
     """Select ROI from GUI"""
     scan_dir = Path(scan_dir)
     files = list(scan_dir.glob("*.h5"))
@@ -46,7 +51,6 @@ def select_roi(scan_dir: str | Path, config: ExpConfig, index_mode: Optional[int
     file: Path = scan_dir / files[index]
     image = get_hdf5_images(file, config).sum(axis=0)
     return RoiRectangle.from_tuple(RoiSelector().select_roi(np.log1p(image)))
-
 
 
 def auto_roi(scan_dir: str | Path, config: ExpConfig, index_mode: Optional[int] = None):

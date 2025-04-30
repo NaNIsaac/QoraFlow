@@ -38,7 +38,7 @@ def analyze_project(root_dir):
                 project_structure[rel_path]["modules"][module_name] = {
                     "classes": classes,
                     "functions": functions,
-                    "loc": loc
+                    "loc": loc,
                 }
 
     return project_structure
@@ -51,7 +51,9 @@ def print_project_structure(structure, indent=""):
         for module_name, module_info in dir_content["modules"].items():
             print(f"{indent}    ├── {module_name}.py:")
             print(f"{indent}    │   ├── Classes: {', '.join(module_info['classes'])}")
-            print(f"{indent}    │   ├── Functions: {', '.join(module_info['functions'])}")
+            print(
+                f"{indent}    │   ├── Functions: {', '.join(module_info['functions'])}"
+            )
             # print(f"{indent}    │   └── Lines of Code: {module_info['loc']}")
 
         # if dir_content["files"]:
@@ -85,8 +87,11 @@ def analyze_code_complexity(root_dir):
                     "single_comments": raw_metrics.single_comments,
                     "cc_complexity": {
                         "average": calculate_average_complexity(cc_metrics),
-                        "details": [{"name": node.name, "complexity": node.complexity} for node in cc_metrics]
-                    }
+                        "details": [
+                            {"name": node.name, "complexity": node.complexity}
+                            for node in cc_metrics
+                        ],
+                    },
                 }
 
     return complexity_data
@@ -109,7 +114,7 @@ def print_code_complexity(complexity_data):
         print("  Cyclomatic Complexity (CC):")
         print(f"    Average: {data['cc_complexity']['average']}")
         print("    Details:")
-        for detail in data['cc_complexity']['details']:
+        for detail in data["cc_complexity"]["details"]:
             print(f"      {detail['name']}: {detail['complexity']}")
         print()
 

@@ -26,7 +26,7 @@ def get_file_status(root: str) -> dict:
     return status
 
 
-def h5_tree(val, pre: None = '') -> None:
+def h5_tree(val, pre: None = "") -> None:
     """
     with h5py.File(file) as hf:
         print(hf)
@@ -39,7 +39,7 @@ def h5_tree(val, pre: None = '') -> None:
             # the last item
             if isinstance(val, h5py._hl.group.Group):
                 print(f"{pre}└── {key}")
-                h5_tree(val, f'{pre}    ')
+                h5_tree(val, f"{pre}    ")
             else:
                 try:
                     if h5py.check_string_dtype(val.dtype):
@@ -64,19 +64,19 @@ def h5_tree(val, pre: None = '') -> None:
 
 def load_matdata(h5file: str) -> pd.DataFrame:
     """Return Dataframe that contains metadata"""
-    return pd.read_hdf(h5file, 'metadata')
+    return pd.read_hdf(h5file, "metadata")
 
 
 if __name__ == "__main__":
     from src.config import load_config
     from src.filesystem import get_run_scan_dir
+
     config = load_config()
     load_dir: str = config.path.load_dir
 
-    file = get_run_scan_dir(load_dir, 162, 1, sub_path='p0050.h5')
-    print(pd.DataFrame(pd.read_hdf(file, 'metadata')))
+    file = get_run_scan_dir(load_dir, 162, 1, sub_path="p0050.h5")
+    print(pd.DataFrame(pd.read_hdf(file, "metadata")))
 
-    with h5py.File(file, 'r') as hf:
+    with h5py.File(file, "r") as hf:
         print(hf)
         h5_tree(hf)
-

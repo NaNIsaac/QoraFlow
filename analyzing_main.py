@@ -9,9 +9,13 @@ import tifffile
 from roi_rectangle import RoiRectangle
 
 from src.analyzer.core import DataAnalyzer
-from src.analyzer.draw_figure import (draw_com_diff_figure, draw_com_figure,
-                                    draw_intensity_diff_figure,
-                                    draw_intensity_figure, patch_rectangle)
+from src.analyzer.draw_figure import (
+    draw_com_diff_figure,
+    draw_com_figure,
+    draw_intensity_diff_figure,
+    draw_intensity_figure,
+    patch_rectangle,
+)
 from src.config import load_config
 from src.filesystem import get_run_scan_dir, make_run_scan_dir
 from src.gui.roi_core import RoiSelector
@@ -24,7 +28,7 @@ if TYPE_CHECKING:
 
 
 def main() -> None:
-    '''Entry point'''
+    """Entry point"""
     config: ExpConfig = load_config()
     logger: Logger = setup_logger()
 
@@ -37,7 +41,9 @@ def main() -> None:
 
         processed_dir: str = config.path.processed_dir
         file_name: str = f"run={run_num:0>4}_scan={scan_num:0>4}"
-        npz_file: Path = get_run_scan_dir(processed_dir, run_num, scan_num, sub_path=file_name).with_suffix(".npz")
+        npz_file: Path = get_run_scan_dir(
+            processed_dir, run_num, scan_num, sub_path=file_name
+        ).with_suffix(".npz")
         logger.info(f"NPZ file: {npz_file}")
 
         if not npz_file.exists():
@@ -65,7 +71,9 @@ def main() -> None:
         data_df: DataFrame = processor.analyze_by_roi(roi_rect)
 
         # Define save directory
-        output_dir: Path = make_run_scan_dir(config.path.output_dir, run_num, scan_num, sub_path=roi_name)
+        output_dir: Path = make_run_scan_dir(
+            config.path.output_dir, run_num, scan_num, sub_path=roi_name
+        )
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Slice images to ROI
@@ -78,10 +86,10 @@ def main() -> None:
         logger.info(f"Saved CSV '{data_file}'")
 
         images_to_save = {
-            'poff.tif': poff_images,
-            'pon.tif': pon_images,
-            'roi_poff.tif': roi_poff_images,
-            'roi_pon.tif': roi_pon_images,
+            "poff.tif": poff_images,
+            "pon.tif": pon_images,
+            "roi_poff.tif": roi_poff_images,
+            "roi_pon.tif": roi_pon_images,
         }
         for filename, image_data in images_to_save.items():
             file_path = output_dir / filename
@@ -90,7 +98,9 @@ def main() -> None:
 
         # Save Figures
         figures_to_save = {
-            "log_image.png": patch_rectangle(np.log1p(processor.poff_images.sum(axis=0)), *roi_rect.to_tuple()),
+            "log_image.png": patch_rectangle(
+                np.log1p(processor.poff_images.sum(axis=0)), *roi_rect.to_tuple()
+            ),
             "delay-intensity.png": draw_intensity_figure(data_df),
             "delay-intensity_diff.png": draw_intensity_diff_figure(data_df),
             "delay-com.png": draw_com_figure(data_df),

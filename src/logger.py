@@ -12,6 +12,7 @@ Example usage:
     logger = setup_logger()
     logger.info("This is an info message.")
 """
+
 from pathlib import Path
 
 import loguru
