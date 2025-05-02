@@ -1,11 +1,11 @@
 runs:
-  [164]
+  [20, 22, 24, 25, 57, 58, 68, 75, 76, 85, 86, 87, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 150, 152, 153, 154]
 
 path:
   log_dir: ./logs
 
-  load_dir: Y:/240608_FXS/raw_data/h5/type=raw
-  analysis_dir: Y:/240608_FXS/analysis_data
+  load_dir: X:\250324_FXS\raw_data\h5\type=raw
+  analysis_dir: X:\250324_FXS/analysis
 
   # load_dir: /xfel/ffs/dat/ue_240819_FXS/raw_data/h5/type=raw/
   # analysis_dir: /home/hxpp-admin/Desktop/sogang/250324_sogang/analysis
@@ -15,7 +15,7 @@ path:
   processed_dir: ${path.analysis_dir}/processed_data
 
 param:
-  pump_setting: 30HZ
+  pump_setting: 0HZ
   hutch: eh1
   detector: jungfrau2
   xray: HX

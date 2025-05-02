@@ -18,7 +18,7 @@ ImagesQbpm = tuple[npt.NDArray, npt.NDArray]
 ImagesQbpmProcessor = Callable[[ImagesQbpm], ImagesQbpm]
 
 
-def create_pohang(roi_rect: RoiRectangle) -> ImagesQbpmProcessor:
+def create_pohang(roi_rect: RoiRectangle | None) -> ImagesQbpmProcessor:
 
     def pohang(images_qbpm: ImagesQbpm) -> ImagesQbpm:
         images, qbpm = images_qbpm

@@ -7,7 +7,7 @@ from scipy.io import savemat
 
 from src.config import ExpConfig, load_config
 from src.filesystem import make_run_scan_dir
-
+from src.mathematics import axis_np2mat
 
 def get_file_base_name(run_n: int, scan_n: int) -> str:
     """Return formated file name"""
@@ -56,7 +56,7 @@ class MatSaverStrategy(SaverStrategy):
         mat_dir.mkdir(parents=True, exist_ok=True)
         for key, val in data_dict.items():
             if val.ndim == 3:
-                mat_format_images = val.transpose(1, 2, 0)
+                mat_format_images = axis_np2mat(val)
                 file_base_name = get_file_base_name(run_n, scan_n)
                 mat_file: Path = mat_dir / f"{file_base_name}_{key}{comment}.mat"
                 savemat(mat_file, {"data": mat_format_images})

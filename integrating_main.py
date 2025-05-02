@@ -24,8 +24,8 @@ config: ExpConfig = load_config()
 def setup_preprocessors(scan_dir: Path) -> dict[str, ImagesQbpmProcessor]:
     """Return preprocessors"""
 
-    roi_rect: RoiRectangle = select_roi(scan_dir, config, None)
-    # roi_rect = None
+    # roi_rect: RoiRectangle = select_roi(scan_dir, config, None)
+    roi_rect = None
 
     pohang = create_pohang(roi_rect)
     threshold4 = create_threshold(4)
