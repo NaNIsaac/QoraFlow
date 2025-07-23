@@ -10,6 +10,7 @@ import pandas as pd
 
 from src.config import ExpConfig, load_config
 from src.config.enums import Hertz
+from src.logger import Logger, setup_logger
 
 
 class RawDataLoader(ABC):
@@ -56,7 +57,7 @@ class PalXFELLoader(RawDataLoader):
         """
         if not os.path.exists(file):
             raise FileNotFoundError(f"No such file: {file}")
-
+        self.logger: Logger = setup_logger()
         self.file: str = file
         self.config: ExpConfig = load_config()
 
@@ -65,10 +66,15 @@ class PalXFELLoader(RawDataLoader):
         if merged_df.empty:
             raise ValueError(f"No matching data found in {self.file}")
 
-        self.images: npt.NDArray[np.float32] = np.stack(merged_df["image"].values)
-        self.qbpm: npt.NDArray[np.float32] = np.stack(merged_df["qbpm"].values)
+        # self.images: npt.NDArray[np.float32] = np.stack(merged_df["image"].values)
+        # self.qbpm: npt.NDArray[np.float32] = np.stack(merged_df["qbpm"].values)
+        self.images = np.array(merged_df["image"].tolist(), dtype=np.float32)
+        self.qbpm = np.array(merged_df["qbpm"].tolist(), dtype=np.float32)
         self.pump_state: npt.NDArray[np.bool_] = self._get_pump_mask(merged_df)
         self.delay: npt.NDArray[np.float64] = self._get_delay(merged_df)
+
+        self.logger.info(f"Loaded {len(self.images)} images and {len(self.qbpm)} qbpm data.")
+        self.logger.info(f"Pump state distribution: {np.sum(self.pump_state)} on, {np.sum(~self.pump_state)} off.")
 
     def _get_merged_df(self, metadata: pd.DataFrame) -> pd.DataFrame:
         """
@@ -103,19 +109,22 @@ class PalXFELLoader(RawDataLoader):
                 ),
                 axis=(0, 2),
             )
-
-        image_df = pd.DataFrame(
-            {"timestamp": images_ts, "image": list(images)}
-        ).set_index("timestamp")
-        qbpm_df = pd.DataFrame({"timestamp": qbpm_ts, "qbpm": list(qbpm)}).set_index(
-            "timestamp"
-        )
-        merged_df = pd.merge(
-            image_df, qbpm_df, left_index=True, right_index=True, how="inner"
-        )
-        return pd.merge(
-            metadata, merged_df, left_index=True, right_index=True, how="inner"
-        )
+        image_df = pd.DataFrame({"image": list(images)}, index=images_ts)
+        qbpm_df = pd.DataFrame({"qbpm": list(qbpm)}, index=qbpm_ts)
+        merged_df = image_df.join(qbpm_df, how="inner")
+        return metadata.join(merged_df, how="inner")
+        # image_df = pd.DataFrame(
+        #     {"timestamp": images_ts, "image": list(images)}
+        # ).set_index("timestamp")
+        # qbpm_df = pd.DataFrame({"timestamp": qbpm_ts, "qbpm": list(qbpm)}).set_index(
+        #     "timestamp"
+        # )
+        # merged_df = pd.merge(
+        #     image_df, qbpm_df, left_index=True, right_index=True, how="inner"
+        # )
+        # return pd.merge(
+        #     metadata, merged_df, left_index=True, right_index=True, how="inner"
+        # )
 
     def _get_delay(self, merged_df: pd.DataFrame) -> np.float64 | float:
         """
@@ -184,11 +193,7 @@ def get_hdf5_images(file: str, config: ExpConfig) -> npt.NDArray:
         if "detector" not in hf:
             raise KeyError(f"Key 'detector' not found in {file}")
 
-        images = np.asarray(
-            hf[
-                f"detector/{config.param.hutch.value}/{config.param.detector.value}/image/block0_values"
-            ]
-        )
+        images = hf[f"detector/{config.param.hutch.value}/{config.param.detector.value}/image/block0_values"][:]
 
         return np.maximum(images, 0)
 

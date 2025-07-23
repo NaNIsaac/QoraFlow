@@ -5,15 +5,16 @@ from roi_rectangle import RoiRectangle
 from src.config import ExpConfig, load_config
 from src.filesystem import get_run_scan_dir, get_scan_nums
 from src.functional import compose
-from src.gui.select_roi import select_roi  # auto_roi
+from src.gui.select_roi import auto_roi
 from src.integrator.core import CoreIntegrator
 from src.integrator.loader import PalXFELLoader
 from src.integrator.saver import SaverStrategy, get_saver_strategy
 from src.logger import Logger, setup_logger
-from src.preprocessor.image_qbpm_preprocessor import (  # subtract_dark_background,
+from src.preprocessor.image_qbpm_preprocessor import (
     ImagesQbpmProcessor,
     create_pohang,
     create_threshold,
+    # subtract_dark_background,
 )
 
 
@@ -25,7 +26,7 @@ def setup_preprocessors(scan_dir: Path) -> dict[str, ImagesQbpmProcessor]:
     """Return preprocessors"""
 
     # roi_rect: RoiRectangle = select_roi(scan_dir, config, None)
-    roi_rect = None
+    roi_rect: RoiRectangle = auto_roi(scan_dir, config, None)
 
     pohang = create_pohang(roi_rect)
     threshold4 = create_threshold(4)
@@ -67,7 +68,7 @@ def integrate_scan(run_n: int, scan_n: int) -> None:
 def main() -> None:
     """The entry point of the program."""
 
-    logger.info(f"Runs to process: {config.runs}")
+    logger.info(f"Runs to integrate: {config.runs}")
 
     for run_n in config.runs:
         logger.info(f"Run: {run_n}")
@@ -79,7 +80,7 @@ def main() -> None:
                 logger.exception(f"Failed to process run={run_n}, scan={scan_n}")
                 raise
 
-    logger.info("All processing is complete")
+    logger.info("All integration is complete")
 
 
 if __name__ == "__main__":

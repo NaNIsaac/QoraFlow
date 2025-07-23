@@ -9,6 +9,7 @@ from src.config import ExpConfig, load_config
 from src.filesystem import make_run_scan_dir
 from src.mathematics import axis_np2mat
 
+
 def get_file_base_name(run_n: int, scan_n: int) -> str:
     """Return formated file name"""
     return f"run={run_n:04}_scan={scan_n:04}"

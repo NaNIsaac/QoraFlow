@@ -5,6 +5,7 @@ from typing import Any, Optional
 import numpy as np
 import numpy.typing as npt
 from tqdm import tqdm
+from tables.exceptions import HDF5ExtError
 
 from src.config import ExpConfig, load_config
 from src.integrator.loader import RawDataLoader
@@ -82,15 +83,15 @@ class CoreIntegrator:
         """
         try:
             return self.LoaderStrategy(hdf5_dir)
-        except (KeyError, FileNotFoundError, ValueError) as e:
+        except (KeyError, FileNotFoundError, ValueError, HDF5ExtError) as e:
             self.logger.warning(f"{type(e)} occurred while loading {hdf5_dir}")
             return None
-        # except Exception as e:
-        #     self.logger.exception(f"Failed to load {hdf5_dir}: {type(e)}: {e}")
-        #     return None
         except Exception as e:
             self.logger.critical(f"{type(e)} occurred while loading {hdf5_dir}")
-            raise
+            raise 
+        # except Exception as e:
+        #     self.logger.exception(f"{type(e)} occurred while loading {hdf5_dir}")
+        #     return None
 
     def _preprocess_data(
         self,

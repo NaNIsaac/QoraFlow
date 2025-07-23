@@ -65,11 +65,27 @@ def auto_roi(scan_dir: str | Path, config: ExpConfig, index_mode: Optional[int] 
 
     file: Path = scan_dir / files[index]
     image = get_hdf5_images(file, config).sum(axis=0)
-    y, x, *_ = np.unravel_index(np.argmax(image, axis=None), image.shape)
 
-    d = 20
+    # Normalize image
+    img = np.nan_to_num(image)
+    img = img - np.min(img)
+    if np.max(img) != 0:
+        img = img / np.max(img)
 
-    return RoiRectangle(x - d, y - d, x + d, y + d)
+    # Threshold to remove background noise (e.g., keep top 10%)
+    threshold = np.percentile(img, 90)
+    mask = img >= threshold
+    masked_img = img * mask
+
+    # Compute centroid (intensity-weighted)
+    total = masked_img.sum()
+
+    indices = np.indices(masked_img.shape)
+    y_c = int(np.sum(indices[0] * masked_img) / total)
+    x_c = int(np.sum(indices[1] * masked_img) / total)
+
+    d = 20  # Half-side of ROI box
+    return RoiRectangle(x_c - d, y_c - d, x_c + d, y_c + d)
 
 
 if __name__ == "__main__":
