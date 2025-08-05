@@ -18,9 +18,9 @@ ImagesQbpm = tuple[npt.NDArray, npt.NDArray]
 ImagesQbpmProcessor = Callable[[ImagesQbpm], ImagesQbpm]
 
 
-def create_pohang(roi_rect: RoiRectangle | None) -> ImagesQbpmProcessor:
+def make_qbpm_roi_normalizer(roi_rect: RoiRectangle | None) -> ImagesQbpmProcessor:
 
-    def pohang(images_qbpm: ImagesQbpm) -> ImagesQbpm:
+    def filter_and_normalize_by_qbpm(images_qbpm: ImagesQbpm) -> ImagesQbpm:
         images, qbpm = images_qbpm
         if roi_rect is None:
             roi_images = images
@@ -50,10 +50,10 @@ def create_pohang(roi_rect: RoiRectangle | None) -> ImagesQbpmProcessor:
 
         return valid_images, qbpm[qbpm_mask][valid]
 
-    return pohang
+    return filter_and_normalize_by_qbpm
 
 
-def create_threshold(n: float) -> ImagesQbpmProcessor:
+def make_thresholder(n: float) -> ImagesQbpmProcessor:
     def threshold(images_qbpm: ImagesQbpm) -> ImagesQbpm:
         images, qbpm = images_qbpm
         return np.where(images > n, images, 0), qbpm

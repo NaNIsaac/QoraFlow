@@ -12,8 +12,8 @@ from src.integrator.saver import SaverStrategy, get_saver_strategy
 from src.logger import Logger, setup_logger
 from src.preprocessor.image_qbpm_preprocessor import (
     ImagesQbpmProcessor,
-    create_pohang,
-    create_threshold,
+    make_qbpm_roi_normalizer,
+    make_thresholder,
     # subtract_dark_background,
 )
 
@@ -28,12 +28,12 @@ def setup_preprocessors(scan_dir: Path) -> dict[str, ImagesQbpmProcessor]:
     # roi_rect: RoiRectangle = select_roi(scan_dir, config, None)
     roi_rect: RoiRectangle = auto_roi(scan_dir, config, None)
 
-    pohang = create_pohang(roi_rect)
-    threshold4 = create_threshold(4)
+    filter_and_normalize_by_qbpm = make_qbpm_roi_normalizer(roi_rect)
+    threshold4 = make_thresholder(4)
     # compose make a function that exicuted from right to left
     standard = compose(
         threshold4,
-        pohang,
+        filter_and_normalize_by_qbpm,
         # subtract_dark_background
     )
 
