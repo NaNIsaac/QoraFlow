@@ -1,4 +1,10 @@
-# PAL-XFEL Data Handling Toolkit for Time-Resolved Ultrafast Experiments
+# CordaX
+
+> Connecting Beams, Reshaping Diffraction.
+
+CordaX aims to be a general-purpose toolkit for handling complex scientific data, built on the principle of "connecting" disparate datasets to "reshape" them into meaningful insights.
+
+At present, our development is centered on providing a high-performance solution for time-resolved ultrafast experiments at X-ray Free-Electron Lasers (XFELs). The toolkit is especially tailored for data generated at the **Pohang Accelerator Laboratory (PAL-XFEL)**.
 
 # Project Heritage: Legacy System Attribution
 ## Legacy Codebase Origin
@@ -20,14 +26,14 @@ This project builds upon and refactors the legacy system **XFEL_data**, original
 
 1. **Clone the repository:**
     ```bash
-    git clone https://github.com/SJB7777/STO-XFEL.git
-    cd STO-XFEL
+    git clone https://github.com/SJB7777/CordaX.git
+    cd CordaX
     ```
 
 2. **Create the virtual environment:**
     ```bash
-    conda create -n xfel python=3.13
-    conda activate xfel
+    conda create -n cordax python=3.13
+    conda activate cordax
     pip install -r requirements.txt
     ```
 
