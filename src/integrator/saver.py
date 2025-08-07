@@ -122,12 +122,11 @@ class TifSaverStrategy(SaverStrategy):
             processed_dir, run_n, scan_n, sub_path=file_name
         )
         tifffile.imsave(
-        'output_with_metadata.tif',
-        data[0], # Save a single frame
-        imagej=True, # For ImageJ compatibility
-        metadata={'spacing': 0.5, 'unit': 'um', 'axes': 'YX'}
-    )
-
+            "output_with_metadata.tif",
+            data[0],  # Save a single frame
+            imagej=True,  # For ImageJ compatibility
+            metadata={"spacing": 0.5, "unit": "um", "axes": "YX"},
+        )
 
     @property
     def file(self) -> str:

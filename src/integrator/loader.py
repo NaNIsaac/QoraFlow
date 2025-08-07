@@ -73,8 +73,12 @@ class PalXFELLoader(RawDataLoader):
         self.pump_state: npt.NDArray[np.bool_] = self._get_pump_mask(merged_df)
         self.delay: npt.NDArray[np.float64] = self._get_delay(merged_df)
 
-        self.logger.info(f"Loaded {len(self.images)} images and {len(self.qbpm)} qbpm data.")
-        self.logger.info(f"Pump state distribution: {np.sum(self.pump_state)} on, {np.sum(~self.pump_state)} off.")
+        self.logger.info(
+            f"Loaded {len(self.images)} images and {len(self.qbpm)} qbpm data."
+        )
+        self.logger.info(
+            f"Pump state distribution: {np.sum(self.pump_state)} on, {np.sum(~self.pump_state)} off."
+        )
 
     def _get_merged_df(self, metadata: pd.DataFrame) -> pd.DataFrame:
         """
@@ -193,7 +197,9 @@ def get_hdf5_images(file: str, config: ExpConfig) -> npt.NDArray:
         if "detector" not in hf:
             raise KeyError(f"Key 'detector' not found in {file}")
 
-        images = hf[f"detector/{config.param.hutch.value}/{config.param.detector.value}/image/block0_values"][:]
+        images = hf[
+            f"detector/{config.param.hutch.value}/{config.param.detector.value}/image/block0_values"
+        ][:]
 
         return np.maximum(images, 0)
 

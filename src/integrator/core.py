@@ -88,7 +88,7 @@ class CoreIntegrator:
             return None
         except Exception as e:
             self.logger.critical(f"{type(e)} occurred while loading {hdf5_dir}")
-            raise 
+            raise
         # except Exception as e:
         #     self.logger.exception(f"{type(e)} occurred while loading {hdf5_dir}")
         #     return None

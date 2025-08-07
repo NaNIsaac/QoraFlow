@@ -12,6 +12,10 @@ FWHM_COEFFICIENT: Final[float] = (
 WAVELENGTH_COEFFICIENT: Final[float] = 12.398419843320025
 
 
+def min_max_scale(arr) -> np.ndarray:
+    return (arr - arr.min()) / (arr.max() - arr.min())
+
+
 def axis_np2mat(arr: npt.NDArray) -> npt.NDArray:
     """
     Reorders the axes of an array to move the last two axes to the front.

@@ -34,19 +34,15 @@ def make_qbpm_roi_normalizer(roi_rect: RoiRectangle | None) -> ImagesQbpmProcess
             qbpm < qbpm.mean() + qbpm.std() * 2,
         )
 
-        signal_ratio = roi_intensities[qbpm_mask] / qbpm[qbpm_mask]
+        signal_ratios = roi_intensities[qbpm_mask] / qbpm[qbpm_mask]
 
         valid = np.logical_and(
-            signal_ratio < np.median(signal_ratio) + np.std(signal_ratio) * 0.3,
-            signal_ratio > np.median(signal_ratio) - np.std(signal_ratio) * 0.3,
+            signal_ratios < np.median(signal_ratios) + np.std(signal_ratios) * 0.3,
+            signal_ratios > np.median(signal_ratios) - np.std(signal_ratios) * 0.3,
         )
 
         valid_qbpm = qbpm[qbpm_mask][valid]
-        valid_images = (
-            images[qbpm_mask][valid]
-            / valid_qbpm[:, np.newaxis, np.newaxis]
-            * np.mean(valid_qbpm)
-        )
+        valid_images = images[qbpm_mask][valid] / valid_qbpm[:, np.newaxis, np.newaxis] * np.mean(valid_qbpm)
 
         return valid_images, qbpm[qbpm_mask][valid]
 

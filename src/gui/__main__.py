@@ -8,6 +8,7 @@ from src.gui.roi_core import RoiSelector
 from src.analyzer.converter import load_npz
 from src.config import load_config
 from src.filesystem import get_run_scan_dir
+from src.integrator.loader import PalXFELLoader
 
 
 def load_image(run_n: int) -> np.ndarray:
@@ -51,7 +52,12 @@ def select_roi_from_image(image: np.ndarray) -> tuple[int, int, int, int]:
     return RoiSelector().select_roi(image)
 
 
-@click.command()
+@click.group()
+def main() -> None:
+    pass
+
+
+@main.command()
 @click.argument("run_n", type=int)
 @click.option("--roi", is_flag=True, help="Flag to trigger ROI selection.")
 @click.option("--log", is_flag=True, help="Flag to apply log1p to the image.")
@@ -61,7 +67,7 @@ def select_roi_from_image(image: np.ndarray) -> tuple[int, int, int, int]:
 @click.option(
     "--vmax", type=float, default=np.inf, help="Maximum value for image clipping."
 )
-def gui_cli(run_n: int, roi: bool, log: bool, vmin: float, vmax: float) -> None:
+def processed(run_n: int, roi: bool, log: bool, vmin: float, vmax: float) -> None:
     """
     Command-line interface to process and optionally display ROI of an image.
 
@@ -83,5 +89,38 @@ def gui_cli(run_n: int, roi: bool, log: bool, vmin: float, vmax: float) -> None:
         select_roi_from_image(processed_image)
 
 
+@main.command()
+@click.argument("run_n", type=int)
+@click.argument("scan_n", type=int)
+@click.argument("p_n", type=int)
+@click.option("--roi", is_flag=True, help="Flag to trigger ROI selection.")
+@click.option("--log", is_flag=True, help="Flag to apply log1p to the image.")
+@click.option(
+    "--vmin", type=float, default=0.0, help="Minimum value for image clipping."
+)
+@click.option(
+    "--vmax", type=float, default=np.inf, help="Maximum value for image clipping."
+)
+def raw(
+    run_n: int, scan_n: int, p_n: int, roi: bool, log: bool, vmin: float, vmax: float
+) -> None:
+    config = load_config()
+    file = get_run_scan_dir(
+        config.path.load_dir, run_n, scan_n, sub_path=f"p{p_n:04}.h5"
+    )
+    loader = PalXFELLoader(file)
+    data = loader.get_data()
+    image = np.sum(data["poff"], axis=0)
+
+    processed_image = process_image(image, log, vmin, vmax)
+
+    if roi:
+        roi_coords = select_roi_from_image(processed_image)
+        roi_rect = RoiRectangle.from_tuple(roi_coords)
+        click.echo(str(roi_rect))
+    else:
+        select_roi_from_image(processed_image)
+
+
 if __name__ == "__main__":
-    gui_cli()
+    main()
