@@ -2,7 +2,7 @@
 This module provides functionality to load and save configuration files,
 with support for placeholder substitution in the configuration values.
 """
-
+# TODO: Define new function that return ExpConfig from str
 import re
 from functools import lru_cache
 from pathlib import Path
