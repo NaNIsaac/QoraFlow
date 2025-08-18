@@ -94,7 +94,6 @@ def load_config(reload: bool = False) -> ExpConfig:
     """
     if reload:
         __load_config.cache_clear()
-        return __load_config()
     return __load_config()
 
 
