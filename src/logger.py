@@ -8,7 +8,7 @@ Log files are stored in the 'logs' directory, organized by date, and named with 
 Each log file is rotated when it reaches 500 MB in size and compressed in ZIP format.
 
 Example usage:
-    from logger_setup import setup_logger
+    from logger import setup_logger
     logger = setup_logger()
     logger.info("This is an info message.")
 """
