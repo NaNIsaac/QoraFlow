@@ -68,8 +68,8 @@ def load_matdata(h5file: str) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    from src.config import load_config
-    from src.filesystem import get_run_scan_dir
+    from CordaX.config import load_config
+    from CordaX.filesystem import get_run_scan_dir
 
     config = load_config()
     load_dir: str = config.path.load_dir

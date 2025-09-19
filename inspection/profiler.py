@@ -4,9 +4,9 @@ import logging
 import pstats
 from pathlib import Path
 
-from src.config import ExpConfig, load_config
-from src.filesystem import get_run_scan_dir
-from src.integrator.loader import PalXFELLoader
+from CordaX.config import ExpConfig, load_config
+from CordaX.filesystem import get_run_scan_dir
+from CordaX.integrator.loader import PalXFELLoader
 
 
 def main() -> None:
