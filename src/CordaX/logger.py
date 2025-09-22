@@ -12,7 +12,7 @@ Example usage:
     logger = setup_logger()
     logger.info("This is an info message.")
 """
-
+import sys
 from pathlib import Path
 
 import loguru
@@ -21,7 +21,7 @@ from loguru._logger import Logger
 from .config import load_config
 
 
-def setup_logger() -> Logger:
+def setup_logger(level="INFO") -> Logger:
     """
     Configures and sets up the logger with a custom format and log file settings.
 
@@ -31,9 +31,18 @@ def setup_logger() -> Logger:
     config = load_config()
     log_dir: Path = config.path.log_dir
 
-    formatter = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {name}:{function}:{line} - {message}"
+    formatter: str = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {name}:{function}:{line} - {message}"
+    formatter = (
+        "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+        "<level>{level: <8}</level> | "
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+        "<level>{message}</level>"
+    )
     log_file: str = log_dir / "{time:YYYY-MM-DD}/{time:YYYYMMDD_HHmmss}.log"
-    loguru.logger.add(log_file, format=formatter, rotation="500 MB", compression="zip")
+
+    loguru.logger.remove()
+    loguru.logger.add(log_file, format=formatter, rotation="500 MB", compression="zip", level=level)
+    loguru.logger.add(sys.stdout, format=formatter, level=level)
 
     return loguru.logger
 

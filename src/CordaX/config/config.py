@@ -72,7 +72,7 @@ def __load_config() -> ExpConfig:
     Returns:
         ExpConfig: Configuration object with placeholders resolved.
     """
-    config_file = Path(__file__).resolve().parent.parent.parent / "config.yaml"
+    config_file = Path("config.yaml").resolve()
     with open(config_file, "r", encoding="utf-8") as f:
         config_dict = yaml.safe_load(f)
 

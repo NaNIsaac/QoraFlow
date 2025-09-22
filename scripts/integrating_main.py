@@ -14,7 +14,7 @@ from CordaX.preprocessor.image_qbpm_preprocessor import (
     ImagesQbpmProcessor,
     make_qbpm_roi_normalizer,
     make_thresholder,
-    # subtract_dark_background,
+    subtract_dark_background,
 )
 
 
@@ -34,7 +34,7 @@ def setup_preprocessors(scan_dir: Path) -> dict[str, ImagesQbpmProcessor]:
     standard = compose(
         threshold4,
         filter_and_normalize_by_qbpm,
-        # subtract_dark_background
+        subtract_dark_background
     )
 
     return {

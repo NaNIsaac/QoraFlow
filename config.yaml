@@ -1,11 +1,11 @@
 runs:
-  [46, 47, 49, 50, 53, 54, 55, 67, 73, 97, 99, 100, 101, 102, 103, 104, 106, 107, 108, 109, 110, 111, 115, 116, 117]
+  [165, 168]
 
 path:
   log_dir: ./logs
 
-  load_dir: F:\240821_PAL_delay
-  analysis_dir: F:\240821_PAL_delay/analysis
+  load_dir: D:/03_Resources/Data/240821_PAL_delay
+  analysis_dir: ${path.load_dir}/analysis
 
   # load_dir: /xfel/ffs/dat/ue_240819_FXS/raw_data/h5/type=raw/
   # analysis_dir: /home/hxpp-admin/Desktop/sogang/250324_sogang/analysis

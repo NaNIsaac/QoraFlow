@@ -73,10 +73,10 @@ class PalXFELLoader(RawDataLoader):
         self.pump_state: npt.NDArray[np.bool_] = self._get_pump_mask(merged_df)
         self.delay: npt.NDArray[np.float64] = self._get_delay(merged_df)
 
-        self.logger.info(
+        self.logger.debug(
             f"Loaded {len(self.images)} images and {len(self.qbpm)} qbpm data."
         )
-        self.logger.info(
+        self.logger.debug(
             f"Pump state distribution: {np.sum(self.pump_state)} on, {np.sum(~self.pump_state)} off."
         )
 
