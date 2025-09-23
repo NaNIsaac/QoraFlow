@@ -18,7 +18,7 @@ from pathlib import Path
 import loguru
 from loguru._logger import Logger
 
-from .config import load_config
+from .config import ConfigManager
 
 
 def setup_logger(level="INFO") -> Logger:
@@ -28,7 +28,8 @@ def setup_logger(level="INFO") -> Logger:
     Returns:
         Logger: The configured logger instance.
     """
-    config = load_config()
+    ConfigManager.initialize("config.yaml")
+    config = ConfigManager.load_config()
     log_dir: Path = config.path.log_dir
 
     formatter: str = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {name}:{function}:{line} - {message}"

@@ -33,9 +33,10 @@ class StorageHandler:
 
 
 if __name__ == "__main__":
-    from CordaX.config import load_config
+    from CordaX.config import ConfigManager
 
-    config = load_config()
+    ConfigManager.initialize("config.yaml")
+    config = ConfigManager.load_config()
     load_dir: str = config.path.load_dir
     print(f"{load_dir=}")
     storage = StorageHandler(load_dir)

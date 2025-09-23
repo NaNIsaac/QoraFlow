@@ -7,7 +7,7 @@ from scipy.ndimage import center_of_mass
 from tifffile import imwrite
 
 from CordaX.gui.roi_core import RoiSelector
-from CordaX.config import load_config
+from CordaX.config import ConfigManager
 
 
 def shift_image(arr, dx, dy):
@@ -28,7 +28,7 @@ def shift_image(arr, dx, dy):
 
 def main() -> None:
 
-    config = load_config()
+    config = ConfigManager.load_config()
     runs = [85, 87]
 
     arr_list = []

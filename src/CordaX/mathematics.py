@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 from scipy.integrate import dblquad, quad
 
-from .config import load_config
+from .config import ConfigManager
 
 
 # FWHM_COEFFICIENT = 2 * np.sqrt(2 * np.log(2))
@@ -157,7 +157,7 @@ def get_wavelength(beam_energy: float) -> float:
 
 def pixel_to_del_q(pixels: npt.NDArray) -> npt.NDArray:
 
-    config = load_config()
+    config = ConfigManager.load_config()
     del_pixels = pixels - pixels[0]
     del_two_theta = np.arctan2(config.param.dps, config.param.sdd * del_pixels)
     wavelength = get_wavelength(config.param.beam_energy)
@@ -172,14 +172,14 @@ def pixel_to_q(pixels: npt.NDArray) -> npt.NDArray:
       = (4 * pi / wavelength) * arctan(dps * pixels / sdd) / 2
       = pixels * (4 * pi / wavelength) * arctan(dps / sdd) / 2
     """
-    config = load_config()
+    config = ConfigManager.load_config()
     wavelength = get_wavelength(config.param.beam_energy)
     two_theta = np.arctan2(config.param.dps, config.param.sdd * pixels)
     return 4 * np.pi / wavelength * np.sin(two_theta / 2)
 
 
 def mul_delta_q(pixels: npt.NDArray) -> npt.NDArray:
-    config = load_config()
+    config = ConfigManager.load_config()
     two_theta = np.arctan2(config.param.dps, config.param.sdd)
     wavelength = get_wavelength(config.param.beam_energy)
     delta_q = (4 * np.pi / wavelength) * two_theta

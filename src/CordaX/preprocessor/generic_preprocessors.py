@@ -5,7 +5,7 @@ import numpy.typing as npt
 from scipy.optimize import curve_fit
 from sklearn.linear_model import RANSACRegressor
 
-from ..config import load_config
+from ..config import ConfigManager
 
 
 def ransac_regression(
@@ -131,7 +131,7 @@ def div_images_by_qbpm(images: npt.NDArray, qbpm: npt.NDArray) -> npt.NDArray:
 
 # FIXME: Fix it by referring to Cohere
 def subtract_dark(images: npt.NDArray) -> npt.NDArray:
-    config = load_config()
+    config = ConfigManager.load_config()
     dark_file = config.path.analysis_dir / "dark_images" / "dark.npy"
 
     if not dark_file.exists:

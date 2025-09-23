@@ -89,9 +89,9 @@ def auto_roi(scan_dir: str | Path, config: ExpConfig, index_mode: Optional[int] 
 
 
 if __name__ == "__main__":
-    from CordaX.config import load_config
+    from CordaX.config import ConfigManager
 
-    config: ExpConfig = load_config()
+    config: ExpConfig = ConfigManager.load_config()
     scan_dir = get_run_scan_dir(config.path.load_dir, 114, 1)
     print(config)
 

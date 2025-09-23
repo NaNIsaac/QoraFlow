@@ -4,7 +4,7 @@ from datetime import datetime
 import click
 import h5py
 
-from CordaX.config import load_config
+from CordaX.config import ConfigManager
 from CordaX.filesystem import get_run_scan_dir
 
 
@@ -51,7 +51,8 @@ def list_files_in_directory(
 @click.option("--keys", is_flag=True, help="Show keys contained in HDF5 files")
 def file_check(run_n: int, size: bool, date: bool, keys: bool) -> None:
     """List files of the run directory"""
-    config = load_config()
+
+    config = ConfigManager.load_config()
     load_dir = config.path.load_dir
     run_dir = get_run_scan_dir(load_dir, run_n)
 
@@ -59,4 +60,5 @@ def file_check(run_n: int, size: bool, date: bool, keys: bool) -> None:
 
 
 if __name__ == "__main__":
+    ConfigManager.initialize("config.yaml")
     file_check()

@@ -6,14 +6,14 @@ from roi_rectangle import RoiRectangle
 
 from .roi_core import RoiSelector
 from ..analyzer.converter import load_npz
-from ..config import load_config
+from ..config import ConfigManager
 from ..filesystem import get_run_scan_dir
 from ..integrator.loader import PalXFELLoader
 
 
 def load_image(run_n: int) -> np.ndarray:
     """Load image data from npz file."""
-    config = load_config()
+    config = ConfigManager.load_config()
     scan_n: int = 1
     npz_file: Path = get_run_scan_dir(
         config.path.processed_dir,
@@ -104,7 +104,7 @@ def processed(run_n: int, roi: bool, log: bool, vmin: float, vmax: float) -> Non
 def raw(
     run_n: int, scan_n: int, p_n: int, roi: bool, log: bool, vmin: float, vmax: float
 ) -> None:
-    config = load_config()
+    config = ConfigManager.load_config()
     file = get_run_scan_dir(
         config.path.load_dir, run_n, scan_n, sub_path=f"p{p_n:04}.h5"
     )

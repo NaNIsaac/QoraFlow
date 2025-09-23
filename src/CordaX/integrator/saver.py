@@ -6,7 +6,7 @@ import numpy.typing as npt
 from scipy.io import savemat
 import tifffile
 
-from ..config import ExpConfig, load_config
+from ..config import ExpConfig, ConfigManager
 from ..filesystem import make_run_scan_dir
 from ..mathematics import axis_np2mat
 
@@ -53,7 +53,7 @@ class MatSaverStrategy(SaverStrategy):
         comment: str = "",
     ):
         comment = "_" + comment if comment else ""
-        config: ExpConfig = load_config()
+        config: ExpConfig = ConfigManager.load_config()
         mat_dir: Path = config.path.mat_dir
         mat_dir.mkdir(parents=True, exist_ok=True)
         for key, val in data_dict.items():
@@ -86,7 +86,7 @@ class NpzSaverStrategy(SaverStrategy):
         comment: str = "",
     ):
         comment = "_" + comment if comment else ""
-        config = load_config()
+        config = ConfigManager.load_config()
         processed_dir = config.path.processed_dir
         processed_dir.mkdir(parents=True, exist_ok=True)
         file_name = get_file_base_name(run_n, scan_n) + comment + ".npz"
@@ -114,7 +114,7 @@ class TifSaverStrategy(SaverStrategy):
         comment: str = "",
     ):
         comment = "_" + comment if comment else ""
-        config = load_config()
+        config = ConfigManager.load_config()
         processed_dir = config.path.processed_dir
         processed_dir.mkdir(parents=True, exist_ok=True)
         file_name = get_file_base_name(run_n, scan_n) + comment + ".tif"

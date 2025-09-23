@@ -4,14 +4,14 @@ import logging
 import pstats
 from pathlib import Path
 
-from CordaX.config import ExpConfig, load_config
+from CordaX.config import ConfigManager, ExpConfig
 from CordaX.filesystem import get_run_scan_dir
 from CordaX.integrator.loader import PalXFELLoader
 
 
 def main() -> None:
     """Profile program with cProfile module and visualize with tuna."""
-    config: ExpConfig = load_config()
+    config: ExpConfig = ConfigManager.load_config()
     load_dir: str = config.path.load_dir
     file: Path = get_run_scan_dir(load_dir, 161, 1, sub_path="p0010.h5")
 
@@ -59,4 +59,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    ConfigManager.initialize("config.yaml")
     main()

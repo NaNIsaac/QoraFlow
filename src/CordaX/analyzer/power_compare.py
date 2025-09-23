@@ -3,12 +3,12 @@ import os
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from ..config import ExpConfig, load_config
+from ..config import ExpConfig, ConfigManager
 from ..filesystem import get_run_scan_dir
 
 
 def power_compare(power_run: dict[int, int]) -> pd.DataFrame:
-    config: ExpConfig = load_config()
+    config: ExpConfig = ConfigManager.load_config()
 
     power_df = pd.DataFrame(columns=["power", "delay", "com_y", "com_x", "intensity"])
 

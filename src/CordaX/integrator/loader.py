@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from ..config import ExpConfig, load_config
+from ..config import ExpConfig, ConfigManager
 from ..config.enums import Hertz
 from ..logger import Logger, setup_logger
 
@@ -59,7 +59,7 @@ class PalXFELLoader(RawDataLoader):
             raise FileNotFoundError(f"No such file: {file}")
         self.logger: Logger = setup_logger()
         self.file: str = file
-        self.config: ExpConfig = load_config()
+        self.config: ExpConfig = ConfigManager.load_config()
 
         metadata: pd.DataFrame = pd.read_hdf(self.file, key="metadata")
         merged_df: pd.DataFrame = self._get_merged_df(metadata)
@@ -209,7 +209,7 @@ if __name__ == "__main__":
 
     from CordaX.filesystem import get_run_scan_dir
 
-    config: ExpConfig = load_config()
+    config: ExpConfig = ConfigManager.load_config()
     load_dir: str = config.path.load_dir
     print("load_dir:", load_dir)
     file: Path = get_run_scan_dir(load_dir, 163, 1, sub_path="p0050.h5")

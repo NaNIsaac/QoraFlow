@@ -1,8 +1,8 @@
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
+from pandas import DataFrame
 import numpy as np
 import numpy.typing as npt
 import tifffile
@@ -16,20 +16,17 @@ from CordaX.analyzer.draw_figure import (
     draw_intensity_figure,
     patch_rectangle,
 )
-from CordaX.config import load_config
+from CordaX.config import ConfigManager
+from CordaX.config import ExpConfig
 from CordaX.filesystem import get_run_scan_dir, make_run_scan_dir
 from CordaX.gui.roi_core import RoiSelector
 from CordaX.logger import Logger, setup_logger
 
-if TYPE_CHECKING:
-    from pandas import DataFrame
-
-    from CordaX.config import ExpConfig
-
 
 def main() -> None:
     """Entry point"""
-    config: ExpConfig = load_config()
+    ConfigManager.initialize("config.yaml")
+    config: ExpConfig = ConfigManager.load_config()
     logger: Logger = setup_logger()
 
     run_nums: list[int] = [162]

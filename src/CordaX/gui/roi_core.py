@@ -7,7 +7,7 @@ import numpy.typing as npt
 from matplotlib import patches
 from roi_rectangle import RoiRectangle
 
-from ..config import ExpConfig, load_config
+from ..config import ExpConfig, ConfigManager
 from ..filesystem import get_run_scan_dir
 from ..integrator.loader import get_hdf5_images
 
@@ -81,7 +81,7 @@ class RoiSelector:
 def select_roi_by_run_scan(
     run: int, scan: int, index_mode: Optional[int] = None
 ) -> Optional[RoiRectangle]:
-    config: ExpConfig = load_config()
+    config: ExpConfig = ConfigManager.load_config()
     load_dir = config.path.load_dir
     scan_dir = get_run_scan_dir(load_dir, run, scan)
     files = os.listdir(scan_dir)

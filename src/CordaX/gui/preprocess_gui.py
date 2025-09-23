@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 from matplotlib.widgets import Slider
 
-from ..config import load_config
+from ..config import ConfigManager
 from ..filesystem import get_run_scan_dir
 from ..integrator.loader import PalXFELLoader
 from ..preprocessor.generic_preprocessors import (
@@ -107,7 +107,7 @@ def find_outliers_gui(y: npt.NDArray, x: npt.NDArray) -> float:
 
 def find_outliers_run_scan_gui(run: int, scan: int) -> float:
 
-    config = load_config()
+    config = ConfigManager.load_config()
     scan_dir = get_run_scan_dir(config.path.load_dir, run, scan)
     files = os.listdir(scan_dir)
     file = os.path.join(scan_dir, files[len(files) // 2])
@@ -120,7 +120,7 @@ def find_outliers_run_scan_gui(run: int, scan: int) -> float:
 
 
 def RANSAC_regression_gui(run: int, scan: int) -> None:
-    config = load_config()
+    config = ConfigManager.load_config()
     scan_dir = get_run_scan_dir(config.path.load_dir, run, scan)
     files = os.listdir(scan_dir)
     file = os.path.join(scan_dir, files[len(files) // 2])

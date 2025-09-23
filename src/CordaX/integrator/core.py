@@ -7,7 +7,7 @@ import numpy.typing as npt
 from tqdm import tqdm
 from tables.exceptions import HDF5ExtError
 
-from ..config import ExpConfig, load_config
+from ..config import ExpConfig, ConfigManager
 from .loader import RawDataLoader
 from .saver import SaverStrategy
 from ..logger import Logger, setup_logger
@@ -33,7 +33,7 @@ class CoreIntegrator:
         }
         self.logger: Logger = logger or setup_logger()
         self.result: dict[str, defaultdict[str, npt.NDArray]] = self.integrate(scan_dir)
-        self.config: ExpConfig = load_config()
+        self.config: ExpConfig = ConfigManager.load_config()
 
         self.logger.info(f"Loader: {self.LoaderStrategy.__name__}")
         self.logger.info(f"Meta Data:\n{self.config}")

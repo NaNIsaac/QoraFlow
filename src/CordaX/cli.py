@@ -7,7 +7,7 @@ from roi_rectangle import RoiRectangle
 
 from .gui.roi_core import RoiSelector
 from .analyzer.converter import load_npz
-from .config import load_config
+from .config import ConfigManager
 from .filesystem import get_run_scan_dir
 
 
@@ -20,7 +20,7 @@ class CliError(click.ClickException):
 
 def load_image(run_n: int, scan_n: int) -> np.ndarray:
     """Loads image data for a specific run and scan."""
-    config = load_config()
+    config = ConfigManager.load_config()
     processed_dir = config.path.processed_dir
 
     npz_file: Path = get_run_scan_dir(

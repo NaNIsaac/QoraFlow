@@ -2,7 +2,7 @@ from pathlib import Path
 
 from roi_rectangle import RoiRectangle
 
-from CordaX.config import ExpConfig, load_config
+from CordaX.config import ExpConfig, ConfigManager
 from CordaX.filesystem import get_run_scan_dir, get_scan_nums
 from CordaX.functional import compose
 from CordaX.gui.select_roi import auto_roi
@@ -19,7 +19,8 @@ from CordaX.preprocessor.image_qbpm_preprocessor import (
 
 
 logger: Logger = setup_logger()
-config: ExpConfig = load_config()
+ConfigManager.initialize("config.yaml")
+config: ExpConfig = ConfigManager.load_config()
 
 
 def setup_preprocessors(scan_dir: Path) -> dict[str, ImagesQbpmProcessor]:
