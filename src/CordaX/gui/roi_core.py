@@ -107,7 +107,7 @@ def get_roi_auto(
     """get roi_rect by max pixel"""
     cy, cx = np.unravel_index(np.argmax(image), image.shape)
     return RoiRectangle(
-        cy - half_width, cy + half_width, cx + half_width, cx + half_width
+        cy - half_width, cy + half_width, cx - half_width, cx + half_width
     )
 
 if __name__ == "__main__":
