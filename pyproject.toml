@@ -18,7 +18,7 @@ dependencies = [
     'pandas',
     'pydantic',
     'radon',
-    'roi_rectangle',
+    'roi-rectangle',
     'scikit-image',
     'scikit_learn',
     'scipy',
