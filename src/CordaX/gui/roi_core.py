@@ -75,7 +75,7 @@ class RoiSelector:
             return None
         x1, y1 = min(self.ix, self.fx), min(self.iy, self.fy)
         x2, y2 = max(self.ix, self.fx), max(self.iy, self.fy)
-        return (x1, y1, x2, y2)
+        return (y1, y2, x1, x2)
 
 
 def select_roi_by_run_scan(
@@ -109,7 +109,6 @@ def get_roi_auto(
     return RoiRectangle(
         center[0] - width, center[1] - width, center[0] + width, center[1] + width
     )
-
 
 if __name__ == "__main__":
     roi_rect = select_roi_by_run_scan(144, 1, 0)
