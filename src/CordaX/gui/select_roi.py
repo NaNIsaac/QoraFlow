@@ -25,10 +25,10 @@ def get_metadata_roi(scan_dir: str | Path, config: ExpConfig) -> RoiRectangle:
 
     roi = np.array(
         [
-            roi_coord[config.param.x1],
             roi_coord[config.param.y1],
-            roi_coord[config.param.x2],
             roi_coord[config.param.y2],
+            roi_coord[config.param.x1],
+            roi_coord[config.param.x2],
         ],
         dtype=np.int_,
     )
