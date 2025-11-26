@@ -85,7 +85,7 @@ def auto_roi(scan_dir: str | Path, config: ExpConfig, index_mode: Optional[int] 
     x_c = int(np.sum(indices[1] * masked_img) / total)
 
     d = 20  # Half-side of ROI box
-    return RoiRectangle(x_c - d, y_c - d, x_c + d, y_c + d)
+    return RoiRectangle(y_c - d, y_c + d, x_c - d, x_c + d)
 
 
 if __name__ == "__main__":

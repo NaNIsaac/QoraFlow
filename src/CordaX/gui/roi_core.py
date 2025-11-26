@@ -75,7 +75,7 @@ class RoiSelector:
             return None
         x1, y1 = min(self.ix, self.fx), min(self.iy, self.fy)
         x2, y2 = max(self.ix, self.fx), max(self.iy, self.fy)
-        return (x1, y1, x2, y2)
+        return (y1, y2, x1, x2)
 
 
 def select_roi_by_run_scan(
@@ -102,14 +102,13 @@ def select_roi_by_run_scan(
 
 def get_roi_auto(
     image,
-    width: int = 5,
+    half_width: int = 5,
 ) -> RoiRectangle:
     """get roi_rect by max pixel"""
-    center = np.unravel_index(np.argmax(image), image.shape)[::-1]
+    cy, cx = np.unravel_index(np.argmax(image), image.shape)
     return RoiRectangle(
-        center[0] - width, center[1] - width, center[0] + width, center[1] + width
+        cy - half_width, cy + half_width, cx - half_width, cx + half_width
     )
-
 
 if __name__ == "__main__":
     roi_rect = select_roi_by_run_scan(144, 1, 0)
