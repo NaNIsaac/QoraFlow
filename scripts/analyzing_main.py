@@ -36,7 +36,7 @@ def main() -> None:
         now = datetime.now()
         roi_name: str = now.strftime("%Y%m%d_%H%M%S")
 
-        processed_dir: str = config.path.processed_dir
+        processed_dir: Path = config.path.processed_dir
         file_name: str = f"run={run_num:0>4}_scan={scan_num:0>4}"
         npz_file: Path = get_run_scan_dir(
             processed_dir, run_num, scan_num, sub_path=file_name
