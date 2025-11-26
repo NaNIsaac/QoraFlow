@@ -29,7 +29,7 @@ def main() -> None:
     config: ExpConfig = ConfigManager.load_config()
     logger: Logger = setup_logger()
 
-    run_nums: list[int] = [162]
+    run_nums: list[int] = [165]
     logger.info(f"Data Analysing run={run_nums}")
     for run_num in run_nums:
         scan_num: int = 1
@@ -56,7 +56,7 @@ def main() -> None:
         pon_images: npt.NDArray = processor.pon_images
 
         # Select ROI using GUI
-        if roi := RoiSelector().select_roi(np.log1p(poff_images[0])):
+        if  not (roi := RoiSelector().select_roi(np.log1p(poff_images[0]))):
             err_msg: str = f"No ROI Rectangle Set for run={run_num}, scan={scan_num}"
             logger.error(err_msg)
             raise ValueError(err_msg)

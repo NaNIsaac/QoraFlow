@@ -9,7 +9,7 @@ dependencies = [
     'click',
     'h5py',
     'hdf5plugin',
-    'ipykernel',
+    "ipykernel",
     'jupyter',
     'lmfit',
     'loguru',
@@ -25,5 +25,10 @@ dependencies = [
     'tables',
     'tifffile',
     'tqdm',
-    'tuna'
+    'tuna',
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.6",
 ]

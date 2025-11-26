@@ -55,7 +55,10 @@ def integrate_scan(run_n: int, scan_n: int) -> None:
         logger.info(f"preprocessor: {preprocessor_name}")
 
     integrator: CoreIntegrator = CoreIntegrator(
-        PalXFELLoader, scan_dir, preprocessors, logger
+        PalXFELLoader, scan_dir, 
+        merge_num=3, 
+        preprocessor=preprocessors, 
+        logger=logger
     )
 
     # Set and use SaverStrategy
