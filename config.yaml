@@ -15,6 +15,7 @@ path:
   processed_dir: ${path.analysis_dir}/processed_data
 
 param:
+  merge_num: 3
   pump_setting: 30HZ
   hutch: eh1
   detector: jungfrau2
