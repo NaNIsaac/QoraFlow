@@ -56,7 +56,7 @@ class CoreIntegrator:
         )
         iterator = batched(hdf5_files, self.merge_num)
         desc = str(Path(*scan_dir.parts[-2:]))
-        pbar = tqdm(iterator, total=(len((hdf5_files) + 1) // self.merge_num), desc=desc)
+        pbar = tqdm(iterator, total=((len(hdf5_files) + 1) // self.merge_num), desc=desc)
         for h5_batch in pbar:
             h5_batch_dirs = [scan_dir / file for file in h5_batch]
             loaders = self._get_loaders(h5_batch_dirs)
