@@ -76,7 +76,7 @@ class MatSaverStrategy(SaverStrategy):
 class NpzSaverStrategy(SaverStrategy):
 
     def __init__(self):
-        self._file: str = None
+        self._file: str | None = None
 
     def save(
         self,
