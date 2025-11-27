@@ -59,7 +59,7 @@ class RoiSelector:
                 self.rect.set_height(self.fy - self.iy)
                 plt.draw()
 
-    def select_roi(self, image: npt.NDArray) -> Optional[tuple[int, int, int, int]]:
+    def select_roi(self, image: npt.NDArray) -> tuple[int, int, int, int] | None:
         if image.ndim != 2:
             raise TypeError(f"Invalid shape {image.shape} for image data")
         fig, self.ax = plt.subplots(figsize=(10, 6))
@@ -79,8 +79,8 @@ class RoiSelector:
 
 
 def select_roi_by_run_scan(
-    run: int, scan: int, index_mode: Optional[int] = None
-) -> Optional[RoiRectangle]:
+    run: int, scan: int, index_mode: int | None = None
+) -> RoiRectangle | None:
     config: ExpConfig = ConfigManager.load_config()
     load_dir = config.path.load_dir
     scan_dir = get_run_scan_dir(load_dir, run, scan)

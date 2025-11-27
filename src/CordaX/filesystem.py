@@ -5,9 +5,9 @@ from typing import Generator, Optional
 def get_run_scan_dir(
     mother: str | Path,
     run: int,
-    scan: Optional[int] = None,
+    scan: int | None = None,
     *,
-    sub_path: Optional[str] = None,
+    sub_path: str | None = None,
 ) -> Path:
     """
     Generate the directory for a given run and scan number.
@@ -23,7 +23,7 @@ def get_run_scan_dir(
 
 
 def make_run_scan_dir(
-    mother: str | Path, run: int, scan: int, *, sub_path: str | Path = None
+    mother: str | Path, run: int, scan: int, *, sub_path: str | Path | None = None
 ) -> Path:
     """
     Create a nested directory structure for the given run and scan numbers.

@@ -9,7 +9,7 @@ from ..config import ConfigManager
 
 
 def ransac_regression(
-    y: np.ndarray, x: np.ndarray, min_samples: Optional[int] = None
+    y: np.ndarray, x: np.ndarray, min_samples: int | None = None
 ) -> tuple[npt.NDArray[np.bool_], npt.NDArray, npt.NDArray]:
     """
     Perform RANSAC (Random Sample Consensus) regression to identify inliers and estimate the regression model.

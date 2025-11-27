@@ -37,7 +37,7 @@ def get_metadata_roi(scan_dir: str | Path, config: ExpConfig) -> RoiRectangle:
 
 
 def select_roi(
-    scan_dir: str | Path, config: ExpConfig, index_mode: Optional[int] = None
+    scan_dir: str | Path, config: ExpConfig, index_mode: int | None = None
 ) -> RoiRectangle:
     """Select ROI from GUI"""
     scan_dir = Path(scan_dir)
@@ -53,7 +53,7 @@ def select_roi(
     return RoiRectangle.from_tuple(RoiSelector().select_roi(np.log1p(image)))
 
 
-def auto_roi(scan_dir: str | Path, config: ExpConfig, index_mode: Optional[int] = None):
+def auto_roi(scan_dir: str | Path, config: ExpConfig, index_mode: int | None = None):
     """Get Roi based on the maximum value of the image"""
     scan_dir = Path(scan_dir)
     files = list(scan_dir.glob("*.h5"))

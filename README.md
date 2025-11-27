@@ -94,7 +94,7 @@ python analyzing_main.py
 ```
 
 ## Important Parameters
-- `runs`: List of run numbers to process
+- `runs`: list of run numbers to process
 - `detector`: Detector configuration (jungfrau2)
 - `beam_energy`: X-ray beam energy in keV
 - `sdd`: Sample-to-detector distance in meters
