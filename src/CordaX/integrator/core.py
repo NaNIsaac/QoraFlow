@@ -1,6 +1,9 @@
+'''D:\Dev\CordaX\src\CordaX\integrator\core.py'''
 from collections import defaultdict
+from contextlib import ExitStack  # <--- 추가됨: 여러 context manager를 관리하는 도구
 from pathlib import Path
 from typing import Any
+import gc
 
 import numpy as np
 import numpy.typing as npt
@@ -18,7 +21,7 @@ from ..preprocessor.image_qbpm_preprocessor import ImagesQbpmProcessor
 class CoreIntegrator:
     """
     Core pipeline class for integrating, preprocessing, and saving XFEL scan data.
-    Implements the ETL pattern (Extract, Transform, Load).
+    Refactored to use Incremental Averaging to prevent memory overflow.
     """
 
     def __init__(
@@ -28,7 +31,6 @@ class CoreIntegrator:
         preprocessor: dict[str, ImagesQbpmProcessor] | None = None,
         logger: Logger | None = None,
     ) -> None:
-        """Initialize CoreIntegrator instance (excluding data processing)."""
         self.LoaderStrategy: type[RawDataLoader] = LoaderStrategy
         self.merge_num: int = merge_num
         self.preprocessor: dict[str, ImagesQbpmProcessor] = preprocessor or {
@@ -42,16 +44,13 @@ class CoreIntegrator:
         
         self._result: dict[str, dict[str, npt.NDArray]] | None = None
 
-    def run_integration(self, scan_dir: str | Path) -> dict[str, dict[str, npt.NDArray]]:
-        """
-        Run the integration process: load data in batches, preprocess, average, and stack results.
-        """
+    def run(self, scan_dir: str | Path) -> dict[str, dict[str, npt.NDArray]]:
         scan_dir = Path(scan_dir)
         self.logger.info(f"Starting scan integration for: {scan_dir}")
 
-        preprocessor_data_dict: dict[str, defaultdict[str, list[Any]]] = {
-            name: defaultdict(list) for name in self.preprocessor
-        }
+        running_sums: dict[str, dict[str, np.ndarray]] = defaultdict(dict)
+        running_counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        final_metadata: dict[str, Any] = {}
 
         hdf5_files: list[Path] = sorted(
             scan_dir.glob("*.h5"), key=lambda file: int(file.stem[1:])
@@ -65,49 +64,64 @@ class CoreIntegrator:
         for h5_batch in pbar:
             h5_batch_dirs = [scan_dir / file for file in h5_batch]
 
-            loaders = self._get_loaders(h5_batch_dirs)
-            if loaders is None:
-                continue
+            with ExitStack() as stack:
+                try:
+                    loaders = [
+                        stack.enter_context(self.LoaderStrategy(h5_dir)) 
+                        for h5_dir in h5_batch_dirs
+                    ]
+                except (KeyError, FileNotFoundError, ValueError, HDF5ExtError) as e:
+                    self.logger.warning(f"{type(e).__name__} occurred while loading batch: {e}")
+                    continue
+                except Exception as e:
+                    self.logger.critical(f"Unexpected {type(e).__name__} while loading batch")
+                    raise
 
-            preprocessed_data = self._preprocess_data(loaders)
+                batch_results = self._preprocess_batch_incremental(loaders)
 
-            for name, data in preprocessed_data.items():
-                for data_key, data_value in data.items():
-                    preprocessor_data_dict[name][data_key].append(data_value)
+                for proc_name, data_map in batch_results.items():
+                    for key, (batch_sum, batch_count) in data_map.items():
+                        if key == "delay":
+                            final_metadata["delay"] = batch_sum
+                            continue
 
-            del loaders
+                        if key not in running_sums[proc_name]:
+                            running_sums[proc_name][key] = batch_sum
+                            running_counts[proc_name][key] = batch_count
+                        else:
+                            running_sums[proc_name][key] += batch_sum
+                            running_counts[proc_name][key] += batch_count
+            del batch_results
+
+            gc.collect()
             
         self.logger.info(f"Completed processing: {scan_dir}")
 
-        final_result = {
-            name: {key: np.stack(values) for key, values in data.items()}
-            for name, data in preprocessor_data_dict.items()
-        }
+        # Final Average Calculation
+        final_result = {}
+        for proc_name, key_map in running_sums.items():
+            final_result[proc_name] = {}
+            for key, total_sum in key_map.items():
+                count = running_counts[proc_name][key]
+                if count > 0:
+                    final_result[proc_name][key] = total_sum / count
+                else:
+                    final_result[proc_name][key] = np.zeros_like(total_sum)
+            
+            if "delay" in final_metadata:
+                final_result[proc_name]["delay"] = final_metadata["delay"]
 
         self._result = final_result
         return final_result
 
-    def _get_loaders(self, hdf5_batch_dirs: list[Path]) -> list[RawDataLoader] | None:
-        """
-        Get Loader instances for the given batch of HDF5 files.
-        """
-        try:
-            return [self.LoaderStrategy(h5_dir) for h5_dir in hdf5_batch_dirs]
-        except (KeyError, FileNotFoundError, ValueError, HDF5ExtError) as e:
-            self.logger.warning(f"{type(e).__name__} occurred while loading batch: {e}")
-            return None
-        except Exception as e:
-            self.logger.critical(f"Unexpected {type(e).__name__} while loading batch")
-            raise
-
-    def _preprocess_data(
+    def _preprocess_batch_incremental(
         self,
         loaders: list[RawDataLoader],
-    ) -> dict[str, dict[str, Any]]:
+    ) -> dict[str, dict[str, tuple[Any, int]]]:
         """
-        Extract (get_data), Transform (preprocessor), and calculate the average result.
+        Extract and Transform data.
         """
-        preprocessed_data: dict[str, dict[str, Any]] = {}
+        preprocessed_data: dict[str, dict[str, tuple[Any, int]]] = {}
 
         raw_collections = {
             "pon": [], "pon_qbpm": [],
@@ -116,6 +130,7 @@ class CoreIntegrator:
         common_delay = None
 
         for loader in loaders:
+            # Loader가 이미 open 상태임 (ExitStack 덕분)
             loader_data = loader.get_data() 
             
             if common_delay is None and "delay" in loader_data:
@@ -131,25 +146,32 @@ class CoreIntegrator:
                 if "poff_qbpm" in loader_data:
                     raw_collections["poff_qbpm"].append(loader_data["poff_qbpm"])
 
+        # Apply preprocessors
         for name, preprocessor in self.preprocessor.items():
-            result_data: dict[str, Any] = {}
+            result_data: dict[str, tuple[Any, int]] = {}
             
             if raw_collections["pon"]:
                 merged_pon = np.concatenate(raw_collections["pon"], axis=0)
                 merged_pon_qbpm = np.concatenate(raw_collections["pon_qbpm"], axis=0)
-
+                
                 processed_pon_tuple = preprocessor((merged_pon, merged_pon_qbpm))
-                result_data["pon"] = processed_pon_tuple[0].mean(axis=0)
+                
+                batch_sum = processed_pon_tuple[0].sum(axis=0)
+                batch_count = processed_pon_tuple[0].shape[0]
+                result_data["pon"] = (batch_sum, batch_count)
 
             if raw_collections["poff"]:
                 merged_poff = np.concatenate(raw_collections["poff"], axis=0)
                 merged_poff_qbpm = np.concatenate(raw_collections["poff_qbpm"], axis=0)
 
                 processed_poff_tuple = preprocessor((merged_poff, merged_poff_qbpm))
-                result_data["poff"] = processed_poff_tuple[0].mean(axis=0)
+                
+                batch_sum = processed_poff_tuple[0].sum(axis=0)
+                batch_count = processed_poff_tuple[0].shape[0]
+                result_data["poff"] = (batch_sum, batch_count)
 
             if common_delay is not None:
-                result_data["delay"] = common_delay
+                result_data["delay"] = (common_delay, 1)
 
             preprocessed_data[name] = result_data
 
@@ -157,16 +179,11 @@ class CoreIntegrator:
 
     @property
     def result(self) -> dict[str, dict[str, npt.NDArray]]:
-        """Returns the stacked, processed result data."""
         if self._result is None:
             raise AttributeError("Integration has not been run. Call run_integration() first.")
         return self._result
 
     def save(self, saver: SaverStrategy, run_n: int, scan_n: int):
-        """
-        Saves processed images using a specified saving strategy.
-        Requires run_integration() to be executed first.
-        """
         self.logger.info(f"Start to save as {saver.file_type.capitalize()}")
 
         if self._result is None:

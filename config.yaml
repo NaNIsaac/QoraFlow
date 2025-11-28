@@ -1,10 +1,10 @@
 runs:
-  [165, 168]
+  [165]
 
 path:
   log_dir: ./logs
 
-  load_dir: D:/03_Resources/Data/240821_PAL_delay
+  load_dir: D:\data\240821_PAL_delay
   analysis_dir: ${path.load_dir}/analysis
 
   # load_dir: /xfel/ffs/dat/ue_240819_FXS/raw_data/h5/type=raw/

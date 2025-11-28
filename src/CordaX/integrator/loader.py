@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Literal, Optional
 
 import h5py
 import hdf5plugin  # pylint: disable=unused-import
@@ -14,28 +13,23 @@ from ..logger import Logger, setup_logger
 
 
 class RawDataLoader(ABC):
-    """
-    Abstract base class for loading raw data from various sources.
-
-    This class defines the interface for loading raw data using different strategies.
-    Subclasses must implement the abstract methods to provide specific implementations.
-    """
-
     @abstractmethod
     def __init__(self, file: Path | str) -> None:
-        """
-        Initialize the RawDataLoader with the path to the raw data file.
-        """
+        """Initialize"""
 
     @abstractmethod
     def get_data(self) -> dict[str, npt.NDArray]:
-        """
-        Retrieve the raw data as a dictionary of numpy arrays.
+        """Retrieve data"""
+    
+    def close(self):
+        """Optional close method"""
+        pass
 
-        Returns:
-            dict[str, npt.NDArray]: A dictionary where keys are data identifiers
-            and values are numpy arrays containing the raw data.
-        """
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
 
 class PalXFELLoader(RawDataLoader):
@@ -55,39 +49,47 @@ class PalXFELLoader(RawDataLoader):
         self._h5_file = h5py.File(self.file, "r")
         self._image_path = f"detector/{self.config.param.hutch.value}/{self.config.param.detector.value}/image"
         self._qbpm_path = f"qbpm/{self.config.param.hutch.value}/qbpm1"
-        
+
         metadata: pd.DataFrame = pd.read_hdf(self.file, key="metadata")
         merged_df: pd.DataFrame = self._get_metadata_and_qbpm_df(metadata)
-        
+
         if merged_df.empty:
-            self._h5_file.close()
+            self.close()
             raise ValueError(f"No matching data found in {self.file}")
 
         self.qbpm: npt.NDArray[np.float32] = np.array(merged_df["qbpm"].tolist(), dtype=np.float32)
         self.pump_state: npt.NDArray[np.bool_] = self._get_pump_mask(merged_df)
         self.delay: np.float64 | float = self._get_delay(merged_df)
-        self.metadata_index: npt.NDArray[np.int64] = merged_df.index.values.astype(np.int64)
-        
+
+        raw_indices = merged_df["original_image_index"].values.astype(np.int64)
+        self.metadata_index: npt.NDArray[np.int64] = np.sort(raw_indices)
+
         self.logger.debug(
             f"Initialized {len(self.metadata_index)} indices for images and {len(self.qbpm)} qbpm data."
         )
 
+    def close(self):
+            """Explicitly close the HDF5 file handle."""
+            if hasattr(self, "_h5_file") and self._h5_file:
+                try:
+                    self._h5_file.close()
+                except Exception:
+                    pass
+                self._h5_file = None
+
     def __del__(self):
-        """Ensure h5py file handle is closed when the object is destroyed."""
-        if hasattr(self, "_h5_file") and self._h5_file:
-            self._h5_file.close()
+            self.close()
 
     def _get_metadata_and_qbpm_df(self, metadata: pd.DataFrame) -> pd.DataFrame:
         """
         Merges metadata, image timestamps, and qbpm data based on timestamps.
         Critically, it loads only the QBPM *values* into memory, not images.
         """
-        hf = self._h5_file # 이미 __init__에서 열린 핸들 사용
+        hf = self._h5_file
 
         if "detector" not in hf:
             raise KeyError(f"Key 'detector' not found in {self.file}")
 
-        # 이미지 타임스탬프만 로드
         image_group = hf[self._image_path]
         images_ts = np.array(image_group["block0_items"], dtype=np.int64)
 
@@ -95,23 +97,23 @@ class PalXFELLoader(RawDataLoader):
         qbpm_ts = np.array(qbpm_group["waveforms.ch1/axis1"], dtype=np.int64)
         qbpm = np.sum(
             np.stack(
-                [
-                    qbpm_group[f"waveforms.ch{i + 1}/block0_values"]
-                    for i in range(4)
-                ],
+                [qbpm_group[f"waveforms.ch{i + 1}/block0_values"] for i in range(4)],
                 axis=0,
                 dtype=np.float32,
             ),
             axis=(0, 2),
         )
-        
-        # 이미지 타임스탬프만 있는 DF 생성 (images 필드는 없고, index만 있음)
-        image_ts_df = pd.DataFrame(index=images_ts, data={'temp_key': 0})
+
+        image_ts_df = pd.DataFrame(
+            {
+                "original_image_index": np.arange(len(images_ts), dtype=np.int64)
+            }, 
+            index=images_ts
+        )
         qbpm_df = pd.DataFrame({"qbpm": list(qbpm)}, index=qbpm_ts)
 
-        merged_df = image_ts_df.join(qbpm_df, how="inner").drop(columns=['temp_key'])
-        
-        # 메타데이터와 최종 병합
+        merged_df = image_ts_df.join(qbpm_df, how="inner")
+
         return metadata.join(merged_df, how="inner")
 
     def _get_delay(self, merged_df: pd.DataFrame) -> np.float64 | float:
@@ -138,7 +140,11 @@ class PalXFELLoader(RawDataLoader):
         Retrieves data by loading images from HDF5 lazily.
         Returns: Images and qbpm data for both pump-on and pump-off states.
         """
+        if not self._h5_file:
+            self._h5_file = h5py.File(self.file, "r")
+
         image_block_data = self._h5_file[self._image_path]["block0_values"]
+
         images: npt.NDArray = image_block_data[self.metadata_index]
         
         data: dict[str, npt.NDArray] = {"delay": self.delay}
@@ -182,13 +188,21 @@ if __name__ == "__main__":
     print("load_dir:", load_dir)
     file: Path = get_run_scan_dir(load_dir, 163, 1, sub_path="p0050.h5")
 
-    start = time.time()
-    loader = PalXFELLoader(file) 
-    print(f"Initialization Time: {time.time() - start:.4f} sec")
-    
-    start_data = time.time()
-    data = loader.get_data()
-    print(f"Data Loading Time: {time.time() - start_data:.4f} sec")
+    start_total = time.time()
+    # 'with' 블록을 나가면 자동으로 loader.close()가 호출됨
+    with PalXFELLoader(file) as loader:
+        print(f"Initialization Time: {time.time() - start_total:.4f} sec")
+        
+        start_load = time.time()
+        data = loader.get_data()
+        print(f"Data Loading Time: {time.time() - start_load:.4f} sec")
+
+        # 데이터 확인
+        if 'poff' in data:
+            print(f"POFF Images Shape: {data['poff'].shape}")
+        if 'pon' in data:
+            print(f"PON Images Shape: {data['pon'].shape}")
+        print(f"Delay: {data['delay']}")
 
     print(f"POFF shape: {data['poff'].shape}")
     print(f"PON shape: {data['pon'].shape}")

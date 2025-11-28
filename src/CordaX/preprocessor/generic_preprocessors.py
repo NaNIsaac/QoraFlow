@@ -6,7 +6,7 @@ from scipy.optimize import curve_fit
 from sklearn.linear_model import RANSACRegressor
 
 from ..config import ConfigManager
-
+from ..logger import setup_logger
 
 def ransac_regression(
     y: np.ndarray, x: np.ndarray, min_samples: int | None = None
@@ -134,14 +134,15 @@ def subtract_dark(images: npt.NDArray) -> npt.NDArray:
     config = ConfigManager.load_config()
     dark_file = config.path.analysis_dir / "dark_images" / "dark.npy"
 
-    if not dark_file.exists:
-        raise FileNotFoundError(f"No such file or directory: {dark_file}")
+    if not dark_file.exists():
+        logger = setup_logger()
+        logger.warning(f"No dark image file found: \"{dark_file}\"")
+        return images
 
     dark_images = np.load(dark_file)
     dark = np.mean(dark_images, axis=0)
     none_negative_dark = np.maximum(dark, 0)
     return np.maximum(0, images - none_negative_dark[np.newaxis, :, :])
-    # return np.maximum(images - dark[np.newaxis, :, :], 0)
 
 
 def add_bias(images: npt.NDArray):
