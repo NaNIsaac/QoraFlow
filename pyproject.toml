@@ -3,7 +3,7 @@ name = "cordax"
 version = "0.1.1"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     'PyYAML',
     'click',
@@ -17,6 +17,7 @@ dependencies = [
     'numpy',
     'pandas',
     'pydantic',
+    "pyqt6>=6.10.0",
     'radon',
     'roi-rectangle',
     'scikit-image',
@@ -30,5 +31,5 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "ruff>=0.14.6",
+    "ruff",
 ]

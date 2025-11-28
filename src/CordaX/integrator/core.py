@@ -1,7 +1,6 @@
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
-from itertools import batched
 
 import numpy as np
 import numpy.typing as npt
@@ -9,6 +8,7 @@ from tqdm import tqdm
 from tables.exceptions import HDF5ExtError
 
 from ..config import ExpConfig, ConfigManager
+from ..functional import batched
 from .loader import RawDataLoader
 from .saver import SaverStrategy
 from ..logger import Logger, setup_logger

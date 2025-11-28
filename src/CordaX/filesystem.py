@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Generator, Optional
+from typing import Generator
 
 
 def get_run_scan_dir(
@@ -11,15 +11,23 @@ def get_run_scan_dir(
 ) -> Path:
     """
     Generate the directory for a given run and scan number.
+    Robustly handles all combinations of scan and sub_path.
     """
-    mother = Path(mother)
+    # 1. Start with the Run directory (This is always required)
+    # We cast run to int to ensure string formatting (:03d) works even if a string "1" is passed
+    target_path = Path(mother) / f"run={int(run):03d}"
 
-    if scan is None and sub_path is None:
-        return mother / f"run={run:0>3}"
-    if scan is not None and sub_path is None:
-        return mother / f"run={run:0>3}" / f"scan={scan:0>3}"
-    if scan is not None and sub_path is not None:
-        return mother / f"run={run:0>3}" / f"scan={scan:0>3}" / sub_path
+    # 2. Append Scan directory if it exists
+    if scan is not None:
+        target_path /= f"scan={int(scan):03d}"
+
+    # 3. Append sub_path if it exists
+    if sub_path:
+        # Security/Bug fix: lstrip("/") prevents sub_path from being treated 
+        # as an absolute path (which would reset the path in pathlib)
+        target_path /= sub_path.lstrip("/")
+
+    return target_path
 
 
 def make_run_scan_dir(

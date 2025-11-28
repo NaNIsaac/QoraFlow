@@ -1,6 +1,7 @@
 import os
-from typing import Optional
 
+import matplotlib
+matplotlib.use('QtAgg')
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
