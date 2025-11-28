@@ -36,11 +36,15 @@ class DataAnalyzer:
             )
 
         self.delay: npt.NDArray = data["delay"]
-        self.poff_images: npt.NDArray = data["poff"]
-        # FIXME:
+        
         if "pon" not in data:
-            self.pon_images: npt.NDArray = np.zeros_like(data["poff"]) + 1
+            self.poff_images: npt.NDArray = data["poff"]
+            self.pon_images: npt.NDArray = np.full_like(data["poff"], 1)
+        elif "poff" not in data:
+            self.pon_images: npt.NDArray = data["pon"]
+            self.poff_images: npt.NDArray = np.full_like(data["pon"], 1)
         else:
+            self.poff_images: npt.NDArray = data["poff"]
             self.pon_images: npt.NDArray = data["pon"]
         if angle:
             self.poff_images = rotate(
