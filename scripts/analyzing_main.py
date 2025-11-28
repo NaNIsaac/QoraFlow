@@ -28,7 +28,7 @@ def main() -> None:
     ConfigManager.initialize("config.yaml")
     config: ExpConfig = ConfigManager.load_config()
     logger: Logger = setup_logger()
-
+    suffix: str = "standard"
     run_nums: list[int] = [165]
     logger.info(f"Data Analysing run={run_nums}")
     for run_num in run_nums:
@@ -38,6 +38,8 @@ def main() -> None:
 
         processed_dir: Path = config.path.processed_dir
         file_name: str = f"run={run_num:0>4}_scan={scan_num:0>4}"
+        if suffix:
+            file_name += f"_{suffix}"
         npz_file: Path = get_run_scan_dir(
             processed_dir, run_num, scan_num, sub_path=file_name
         ).with_suffix(".npz")
@@ -96,7 +98,8 @@ def main() -> None:
         # Save Figures
         figures_to_save = {
             "log_image.png": patch_rectangle(
-                np.log1p(processor.poff_images.sum(axis=0)), *roi_rect.to_tuple()
+                np.log1p(processor.poff_images.sum(axis=0)),
+                    *roi_rect.to_tuple()
             ),
             "delay-intensity.png": draw_intensity_figure(data_df),
             "delay-intensity_diff.png": draw_intensity_diff_figure(data_df),

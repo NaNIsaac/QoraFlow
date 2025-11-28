@@ -1,6 +1,5 @@
-'''D:\Dev\CordaX\src\CordaX\integrator\core.py'''
 from collections import defaultdict
-from contextlib import ExitStack  # <--- 추가됨: 여러 context manager를 관리하는 도구
+from contextlib import ExitStack
 from pathlib import Path
 from typing import Any
 import gc
@@ -8,7 +7,6 @@ import gc
 import numpy as np
 import numpy.typing as npt
 from tqdm import tqdm
-from tables.exceptions import HDF5ExtError
 
 from ..config import ExpConfig, ConfigManager
 from ..functional import batched
@@ -20,8 +18,13 @@ from ..preprocessor.image_qbpm_preprocessor import ImagesQbpmProcessor
 
 class CoreIntegrator:
     """
-    Core pipeline class for integrating, preprocessing, and saving XFEL scan data.
-    Refactored to use Incremental Averaging to prevent memory overflow.
+    Core pipeline class for integrating XFEL scan data.
+    
+    Logic:
+    1. Group files by 'merge_num' (Experimental Repeats).
+    2. Load ALL images from these files (e.g., 3 files * 300 frames = 900 frames).
+    3. Group internal data by Delay (Time).
+    4. Preprocess (RANSAC, etc.) & Average -> Single Representative Image.
     """
 
     def __init__(
@@ -40,7 +43,7 @@ class CoreIntegrator:
         self.config: ExpConfig = ConfigManager.load_config()
 
         self.logger.info(f"Loader: {self.LoaderStrategy.__name__}")
-        self.logger.info(f"Meta Data:\n{self.config}")
+        self.logger.info(f"Merge Num: {self.merge_num} (Merging {self.merge_num} files into 1 dataset)")
         
         self._result: dict[str, dict[str, npt.NDArray]] | None = None
 
@@ -48,134 +51,178 @@ class CoreIntegrator:
         scan_dir = Path(scan_dir)
         self.logger.info(f"Starting scan integration for: {scan_dir}")
 
-        running_sums: dict[str, dict[str, np.ndarray]] = defaultdict(dict)
-        running_counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
-        final_metadata: dict[str, Any] = {}
-
+        # Structure: { 'preprocessor_name': { 'pon': [avg_img1, avg_img2...], 'delay': [t1, t2...] } }
+        final_results_list: dict[str, dict[str, list[Any]]] = defaultdict(lambda: defaultdict(list))
+        
         hdf5_files: list[Path] = sorted(
             scan_dir.glob("*.h5"), key=lambda file: int(file.stem[1:])
         )
 
+        # Bundle files in merge_num unit and process
         batches = list(batched(hdf5_files, self.merge_num))
-        desc = f"Processing {scan_dir.name}"
+        desc = f"Processing {scan_dir.name} (bundles={self.merge_num})"
 
-        pbar = tqdm(batches, desc=desc, unit="batch")
+        pbar = tqdm(batches, desc=desc, unit="group")
 
         for h5_batch in pbar:
             h5_batch_dirs = [scan_dir / file for file in h5_batch]
 
+            # Load all of the data in one batch
             with ExitStack() as stack:
                 try:
                     loaders = [
                         stack.enter_context(self.LoaderStrategy(h5_dir)) 
                         for h5_dir in h5_batch_dirs
                     ]
-                except (KeyError, FileNotFoundError, ValueError, HDF5ExtError) as e:
-                    self.logger.warning(f"{type(e).__name__} occurred while loading batch: {e}")
-                    continue
                 except Exception as e:
-                    self.logger.critical(f"Unexpected {type(e).__name__} while loading batch")
-                    raise
+                    self.logger.warning(f"Skipping batch due to load error: {e}")
+                    continue
+                
+                # Return variables: { 'proc_name': { 'pon': 2D_Avg_Img, 'delay': Scalar } }
+                # [OOM Critical Point 1] Large raw data is processed here
+                batch_averaged_data = self._process_batch_group(loaders)
 
-                batch_results = self._preprocess_batch_incremental(loaders)
+                # Save result
+                for proc_name, data_map in batch_averaged_data.items():
+                    # There might be multiple results per delay (usually 1)
+                    for delay_key, result_content in data_map.items():
+                        if "pon" in result_content:
+                            final_results_list[proc_name]["pon"].append(result_content["pon"])
+                        if "poff" in result_content:
+                            final_results_list[proc_name]["poff"].append(result_content["poff"])
+                        
+                        # Store delay information
+                        final_results_list[proc_name]["delay"].append(delay_key)
 
-                for proc_name, data_map in batch_results.items():
-                    for key, (batch_sum, batch_count) in data_map.items():
-                        if key == "delay":
-                            final_metadata["delay"] = batch_sum
-                            continue
-
-                        if key not in running_sums[proc_name]:
-                            running_sums[proc_name][key] = batch_sum
-                            running_counts[proc_name][key] = batch_count
-                        else:
-                            running_sums[proc_name][key] += batch_sum
-                            running_counts[proc_name][key] += batch_count
-            del batch_results
-
+            # 5. Memory release (Very Important: delete several GB of Raw data)
+            del batch_averaged_data
             gc.collect()
             
         self.logger.info(f"Completed processing: {scan_dir}")
 
-        # Final Average Calculation
-        final_result = {}
-        for proc_name, key_map in running_sums.items():
-            final_result[proc_name] = {}
-            for key, total_sum in key_map.items():
-                count = running_counts[proc_name][key]
-                if count > 0:
-                    final_result[proc_name][key] = total_sum / count
-                else:
-                    final_result[proc_name][key] = np.zeros_like(total_sum)
-            
-            if "delay" in final_metadata:
-                final_result[proc_name]["delay"] = final_metadata["delay"]
+        # [Final] Convert list -> Numpy Stack
+        final_result_stack = self._stack_results(final_results_list)
+        self._result = final_result_stack
+        
+        return final_result_stack
 
-        self._result = final_result
-        return final_result
-
-    def _preprocess_batch_incremental(
+    def _process_batch_group(
         self,
         loaders: list[RawDataLoader],
-    ) -> dict[str, dict[str, tuple[Any, int]]]:
+    ) -> dict[str, dict[float, dict[str, Any]]]:
         """
-        Extract and Transform data.
+        [Modified]
+        Merges ALL data from the provided loaders into a single dataset,
+        ignoring whether the internal delays are different.
+        
+        The representative delay for the result will be the MEAN of all delays in the batch.
         """
-        preprocessed_data: dict[str, dict[str, tuple[Any, int]]] = {}
+        
+        # 1. Containers for ALL data in this batch
+        batch_pon: list[npt.NDArray] = []
+        batch_pon_qbpm: list[npt.NDArray] = []
+        batch_poff: list[npt.NDArray] = []
+        batch_poff_qbpm: list[npt.NDArray] = []
+        
+        batch_delays: list[float] = []
 
-        raw_collections = {
-            "pon": [], "pon_qbpm": [],
-            "poff": [], "poff_qbpm": [],
-        }
-        common_delay = None
-
+        # 2. Collect data from all loaders
         for loader in loaders:
-            # Loader가 이미 open 상태임 (ExitStack 덕분)
-            loader_data = loader.get_data() 
+            d = loader.get_data()
             
-            if common_delay is None and "delay" in loader_data:
-                common_delay = loader_data["delay"]
+            # Collect delay for averaging later
+            if "delay" in d:
+                batch_delays.append(float(d["delay"]))
+            
+            if "pon" in d:
+                batch_pon.append(d["pon"])
+                # Handle missing QBPM by filling with ones
+                batch_pon_qbpm.append(d.get("pon_qbpm", np.ones(len(d["pon"]))))
+            
+            if "poff" in d:
+                batch_poff.append(d["poff"])
+                batch_poff_qbpm.append(d.get("poff_qbpm", np.ones(len(d["poff"]))))
 
-            if "pon" in loader_data:
-                raw_collections["pon"].append(loader_data["pon"])
-                if "pon_qbpm" in loader_data:
-                    raw_collections["pon_qbpm"].append(loader_data["pon_qbpm"])
+        # If no delay info found, default to 0.0 or handle error
+        if not batch_delays:
+            return {}
+        
+        # Calculate representative delay (Mean of the batch)
+        rep_delay = float(np.mean(batch_delays))
+        rep_delay = round(rep_delay, 6) # Precision control
 
-            if "poff" in loader_data:
-                raw_collections["poff"].append(loader_data["poff"])
-                if "poff_qbpm" in loader_data:
-                    raw_collections["poff_qbpm"].append(loader_data["poff_qbpm"])
+        # 3. Concatenate (Merge)
+        merged_pon = None
+        merged_pon_qbpm = None
+        if batch_pon:
+            # [OOM Risk] Concatenate all frames in the batch
+            merged_pon = np.concatenate(batch_pon, axis=0)
+            merged_pon_qbpm = np.concatenate(batch_pon_qbpm, axis=0)
 
-        # Apply preprocessors
+            # [Optimization] Immediate memory release
+            batch_pon = None 
+            batch_pon_qbpm = None
+
+        merged_poff = None
+        merged_poff_qbpm = None
+        if batch_poff:
+            merged_poff = np.concatenate(batch_poff, axis=0)
+            merged_poff_qbpm = np.concatenate(batch_poff_qbpm, axis=0)
+
+            # [Optimization] Immediate memory release
+            batch_poff = None
+            batch_poff_qbpm = None
+
+        # 4. Preprocess & Average
+        batch_output = defaultdict(dict)
+
         for name, preprocessor in self.preprocessor.items():
-            result_data: dict[str, tuple[Any, int]] = {}
+            res = {}
+
+            # Process PON
+            if merged_pon is not None:
+                # Preprocess the entire merged stack
+                proc_pon, _ = preprocessor((merged_pon, merged_pon_qbpm))
+
+                if proc_pon.size > 0:
+                    res["pon"] = proc_pon.mean(axis=0)
+
+            # Process POFF
+            if merged_poff is not None:
+                proc_poff, _ = preprocessor((merged_poff, merged_poff_qbpm))
+
+                if proc_poff.size > 0:
+                    res["poff"] = proc_poff.mean(axis=0)
+
+            # Save result using the representative delay
+            if res:
+                batch_output[name][rep_delay] = res
+
+        return batch_output
+
+    def _stack_results(self, results_list: dict) -> dict:
+        """Convert 2D images collected in list to 3D stack in chronological order."""
+        stacked = {}
+        for proc_name, data_map in results_list.items():
+            stacked[proc_name] = {}
             
-            if raw_collections["pon"]:
-                merged_pon = np.concatenate(raw_collections["pon"], axis=0)
-                merged_pon_qbpm = np.concatenate(raw_collections["pon_qbpm"], axis=0)
+            # Group data to sort by Delay (Delay, Index)
+            delays = np.array(data_map["delay"])
+            # Create sort index
+            sort_idx = np.argsort(delays)
+            
+            stacked[proc_name]["delay"] = delays[sort_idx]
+            
+            if "pon" in data_map and data_map["pon"]:
+                # Convert list -> array and index in sorted order
+                pon_stack = np.stack(data_map["pon"], axis=0)
+                stacked[proc_name]["pon"] = pon_stack[sort_idx]
                 
-                processed_pon_tuple = preprocessor((merged_pon, merged_pon_qbpm))
+            if "poff" in data_map and data_map["poff"]:
+                poff_stack = np.stack(data_map["poff"], axis=0)
+                stacked[proc_name]["poff"] = poff_stack[sort_idx]
                 
-                batch_sum = processed_pon_tuple[0].sum(axis=0)
-                batch_count = processed_pon_tuple[0].shape[0]
-                result_data["pon"] = (batch_sum, batch_count)
-
-            if raw_collections["poff"]:
-                merged_poff = np.concatenate(raw_collections["poff"], axis=0)
-                merged_poff_qbpm = np.concatenate(raw_collections["poff_qbpm"], axis=0)
-
-                processed_poff_tuple = preprocessor((merged_poff, merged_poff_qbpm))
-                
-                batch_sum = processed_poff_tuple[0].sum(axis=0)
-                batch_count = processed_poff_tuple[0].shape[0]
-                result_data["poff"] = (batch_sum, batch_count)
-
-            if common_delay is not None:
-                result_data["delay"] = (common_delay, 1)
-
-            preprocessed_data[name] = result_data
-
-        return preprocessed_data
+        return stacked
 
     @property
     def result(self) -> dict[str, dict[str, npt.NDArray]]:
@@ -194,5 +241,4 @@ class CoreIntegrator:
             saver.save(run_n, scan_n, data_dict, comment=name)
 
             self.logger.info(f"Finished preprocessor: {name}")
-            self.logger.info(f"Data dict Keys: {list(data_dict.keys())}")
             self.logger.info(f"Saved file '{saver.file}'")

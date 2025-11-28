@@ -1,4 +1,6 @@
+from functools import lru_cache
 from typing import Optional
+from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
@@ -7,6 +9,8 @@ from sklearn.linear_model import RANSACRegressor
 
 from ..config import ConfigManager
 from ..logger import setup_logger
+
+logger = setup_logger()
 
 def ransac_regression(
     y: np.ndarray, x: np.ndarray, min_samples: int | None = None
@@ -128,20 +132,37 @@ def div_images_by_qbpm(images: npt.NDArray, qbpm: npt.NDArray) -> npt.NDArray:
     """
     return images * qbpm.mean() / qbpm[:, np.newaxis, np.newaxis]
 
+@lru_cache(maxsize=1)
+def _load_cached_dark_image(dark_file_path: Path) -> Optional[np.ndarray]:
+    """
+    Load dark image only ONCE and cache it in RAM.
+    """
+    if not dark_file_path.exists():
+        logger.warning(f"No dark image file found: \"{dark_file_path}\"")
+        return None
+    try:
+        dark_images = np.load(dark_file_path)
+        if dark_images.ndim == 3:
+            return np.mean(dark_images, axis=0)
+        return dark_images
+    except Exception as e:
+        logger.error(f"Failed to load dark image: {e}")
+        return None
 
-# FIXME: Fix it by referring to Cohere
 def subtract_dark(images: npt.NDArray) -> npt.NDArray:
+    """
+    Subtract dark background. Uses caching for performance.
+    """
     config = ConfigManager.load_config()
     dark_file = config.path.analysis_dir / "dark_images" / "dark.npy"
 
-    if not dark_file.exists():
-        logger = setup_logger()
-        logger.warning(f"No dark image file found: \"{dark_file}\"")
+    dark = _load_cached_dark_image(dark_file)
+
+    if dark is None:
         return images
 
-    dark_images = np.load(dark_file)
-    dark = np.mean(dark_images, axis=0)
     none_negative_dark = np.maximum(dark, 0)
+
     return np.maximum(0, images - none_negative_dark[np.newaxis, :, :])
 
 
