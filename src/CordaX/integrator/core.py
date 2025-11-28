@@ -108,7 +108,6 @@ class CoreIntegrator:
         
         return final_result_stack
 
-    # @profile
     def _process_batch_group(
         self,
         loaders: list[RawDataLoader],

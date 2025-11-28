@@ -36,6 +36,7 @@ class ExpParams(BaseModel):
         y2 (int): The y2 setting.
     """
     merge_num: int = 1
+    chunk_size: int = 100
     hutch: Hutch = Hutch.EH1
     detector: Detector = Detector.JUNGFRAU2
     xray: Xray = Xray.HARD
@@ -95,6 +96,7 @@ if __name__ == "__main__":
         },
         "param": {
             "merge_num": 1,
+            "chunk_size": 100,
             "xray": "HX",
             "detector": "jungfrau2",
             "pump_setting": "15HZ",
