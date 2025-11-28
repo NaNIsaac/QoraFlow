@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Any, Iterator
 
 import h5py
 import hdf5plugin  # pylint: disable=unused-import
@@ -21,6 +22,10 @@ class RawDataLoader(ABC):
     def get_data(self) -> dict[str, npt.NDArray]:
         """Retrieve data"""
     
+    @abstractmethod
+    def get_chunked_data(self, chunk_size:int) -> Iterator[dict[str, npt.NDArray]]:
+        """Yield Data"""
+
     def close(self):
         """Optional close method"""
         pass
@@ -135,6 +140,50 @@ class PalXFELLoader(RawDataLoader):
             dtype=np.bool_,
         )
 
+    def get_chunked_data(self, chunk_size: int = 100) -> Iterator[dict[str, Any]]:
+        """
+        [Optimized Method]
+        Yields data in small chunks to prevent OOM errors.
+        This is the preferred method for large-scale processing.
+        """
+        if not self._h5_file:
+            self._h5_file = h5py.File(self.file, "r")
+
+        image_dataset = self._h5_file[self._image_path]["block0_values"]
+        total_frames = len(self.metadata_index)
+
+        # 1. Chunking Loop
+        for start_idx in range(0, total_frames, chunk_size):
+            end_idx = min(start_idx + chunk_size, total_frames)
+            
+            # 2. Slice Indices for current chunk
+            current_indices = self.metadata_index[start_idx:end_idx]
+
+            # 3. Load ONLY the current chunk of images from Disk -> RAM
+            # Note: HDF5 random access is used here.
+            images_chunk = image_dataset[current_indices]
+
+            # 4. Slice Metadata (Already in RAM, fast)
+            current_pump_state = self.pump_state[start_idx:end_idx]
+            current_qbpm = self.qbpm[start_idx:end_idx]
+
+            # 5. Prepare Output
+            data_chunk: dict[str, Any] = {"delay": self.delay}
+
+            poff_mask = ~current_pump_state
+            pon_mask = current_pump_state
+
+            # Apply masks within the chunk
+            if np.any(poff_mask):
+                data_chunk["poff"] = np.maximum(0, images_chunk[poff_mask])
+                data_chunk["poff_qbpm"] = current_qbpm[poff_mask]
+            
+            if np.any(pon_mask):
+                data_chunk["pon"] = np.maximum(0, images_chunk[pon_mask])
+                data_chunk["pon_qbpm"] = current_qbpm[pon_mask]
+
+            yield data_chunk
+
     def get_data(self) -> dict[str, npt.NDArray]:
         """
         Retrieves data by loading images from HDF5 lazily.
@@ -180,29 +229,43 @@ def get_hdf5_images(file: str, config: ExpConfig) -> npt.NDArray:
 
 if __name__ == "__main__":
     import time
-
     from CordaX.filesystem import get_run_scan_dir
-
+    ConfigManager.initialize("config.yaml")
     config: ExpConfig = ConfigManager.load_config()
     load_dir: Path = config.path.load_dir
-    print("load_dir:", load_dir)
-    file: Path = get_run_scan_dir(load_dir, 163, 1, sub_path="p0050.h5")
+    # 테스트할 파일 경로 확인 (예시)
+    try:
+        file: Path = get_run_scan_dir(load_dir, 165, 1, sub_path="p0005.h5")
+        if not file.exists():
+            print(f"File not found: {file}")
+    except Exception as e:
+        print(f"Path Error: {e}")
+        exit()
 
+    print(f"Target: {file}")
+
+    # 1. 기존 방식 테스트
+    print("-" * 30)
+    print("[Test 1] Legacy get_data() (High Memory)")
     start_total = time.time()
-    # 'with' 블록을 나가면 자동으로 loader.close()가 호출됨
     with PalXFELLoader(file) as loader:
-        print(f"Initialization Time: {time.time() - start_total:.4f} sec")
-        
-        start_load = time.time()
         data = loader.get_data()
-        print(f"Data Loading Time: {time.time() - start_load:.4f} sec")
-
-        # 데이터 확인
         if 'poff' in data:
-            print(f"POFF Images Shape: {data['poff'].shape}")
-        if 'pon' in data:
-            print(f"PON Images Shape: {data['pon'].shape}")
-        print(f"Delay: {data['delay']}")
+            print(f"Full Load POFF: {data['poff'].shape}")
+    print(f"Time: {time.time() - start_total:.4f} sec")
 
-    print(f"POFF shape: {data['poff'].shape}")
-    print(f"PON shape: {data['pon'].shape}")
+    # 2. 최적화 방식 테스트
+    print("-" * 30)
+    print("[Test 2] Optimized get_chunked_data() (Low Memory)")
+    start_total = time.time()
+    chunk_count = 0
+    with PalXFELLoader(file) as loader:
+        # 100장씩 잘라서 로드
+        for chunk in loader.get_chunked_data(chunk_size=100):
+            chunk_count += 1
+            if 'poff' in chunk:
+                print(f"  Chunk {chunk_count} POFF: {chunk['poff'].shape}")
+            if 'pon' in chunk:
+                print(f"  Chunk {chunk_count} PON: {chunk['pon'].shape}")
+    print(f"Time: {time.time() - start_total:.4f} sec")
+    print("-" * 30)

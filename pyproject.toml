@@ -31,5 +31,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "memory-profiler>=0.61.0",
     "ruff",
 ]

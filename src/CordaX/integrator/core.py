@@ -31,11 +31,13 @@ class CoreIntegrator:
         self,
         LoaderStrategy: type[RawDataLoader],
         merge_num: int = 1,
+        chunk_size: int = 100,
         preprocessor: dict[str, ImagesQbpmProcessor] | None = None,
         logger: Logger | None = None,
     ) -> None:
         self.LoaderStrategy: type[RawDataLoader] = LoaderStrategy
         self.merge_num: int = merge_num
+        self.chunk_size = chunk_size
         self.preprocessor: dict[str, ImagesQbpmProcessor] = preprocessor or {
             "no_processing": lambda x: x
         }
@@ -106,95 +108,93 @@ class CoreIntegrator:
         
         return final_result_stack
 
+    # @profile
     def _process_batch_group(
         self,
         loaders: list[RawDataLoader],
     ) -> dict[str, dict[float, dict[str, Any]]]:
         """
-        [Modified]
-        Merges ALL data from the provided loaders into a single dataset,
-        ignoring whether the internal delays are different.
-        
-        The representative delay for the result will be the MEAN of all delays in the batch.
+        [Corrected]
+        Incrementally processes chunks from loaders and accumulates sums.
+        Memory usage remains low regardless of total file size.
         """
-        
-        # 1. Containers for ALL data in this batch
-        batch_pon: list[npt.NDArray] = []
-        batch_pon_qbpm: list[npt.NDArray] = []
-        batch_poff: list[npt.NDArray] = []
-        batch_poff_qbpm: list[npt.NDArray] = []
-        
-        batch_delays: list[float] = []
+        # 1. 누적기 초기화
+        accumulators = defaultdict(lambda: {
+            "pon_sum": None, "pon_count": 0,
+            "poff_sum": None, "poff_count": 0,
+            "delays": []
+        })
 
-        # 2. Collect data from all loaders
+        # 2. 모든 로더에 대해 반복
         for loader in loaders:
-            d = loader.get_data()
-            
-            # Collect delay for averaging later
-            if "delay" in d:
-                batch_delays.append(float(d["delay"]))
-            
-            if "pon" in d:
-                batch_pon.append(d["pon"])
-                # Handle missing QBPM by filling with ones
-                batch_pon_qbpm.append(d.get("pon_qbpm", np.ones(len(d["pon"]))))
-            
-            if "poff" in d:
-                batch_poff.append(d["poff"])
-                batch_poff_qbpm.append(d.get("poff_qbpm", np.ones(len(d["poff"]))))
+            # [핵심] 청크 단위(예: 100장)로 조금씩 가져옴
+            for chunk_data in loader.get_chunked_data(chunk_size=self.chunk_size):
+                
+                if "delay" not in chunk_data:
+                    continue
+                current_delay = float(chunk_data["delay"])
+                
+                # 전처리기별 수행
+                for name, preprocessor in self.preprocessor.items():
+                    acc = accumulators[name]
+                    acc["delays"].append(current_delay)
 
-        # If no delay info found, default to 0.0 or handle error
-        if not batch_delays:
-            return {}
-        
-        # Calculate representative delay (Mean of the batch)
-        rep_delay = float(np.mean(batch_delays))
-        rep_delay = round(rep_delay, 6) # Precision control
+                    # --- Pump On ---
+                    if "pon" in chunk_data:
+                        pon_img = chunk_data["pon"]
+                        # QBPM 없으면 1로 채움
+                        pon_qbpm = chunk_data.get("pon_qbpm", np.ones(len(pon_img)))
+                        
+                        # 전처리 (100장 단위)
+                        proc_pon, _ = preprocessor((pon_img, pon_qbpm))
+                        
+                        if proc_pon.size > 0:
+                            # 합계(Sum)만 누적 (메모리 절약)
+                            batch_sum = proc_pon.sum(axis=0)
+                            batch_cnt = proc_pon.shape[0]
 
-        # 3. Concatenate (Merge)
-        merged_pon = None
-        merged_pon_qbpm = None
-        if batch_pon:
-            # [OOM Risk] Concatenate all frames in the batch
-            merged_pon = np.concatenate(batch_pon, axis=0)
-            merged_pon_qbpm = np.concatenate(batch_pon_qbpm, axis=0)
+                            if acc["pon_sum"] is None:
+                                acc["pon_sum"] = batch_sum.astype(np.float64)
+                            else:
+                                acc["pon_sum"] += batch_sum
+                            acc["pon_count"] += batch_cnt
 
-            # [Optimization] Immediate memory release
-            batch_pon = None 
-            batch_pon_qbpm = None
+                    # --- Pump Off ---
+                    if "poff" in chunk_data:
+                        poff_img = chunk_data["poff"]
+                        poff_qbpm = chunk_data.get("poff_qbpm", np.ones(len(poff_img)))
+                        
+                        proc_poff, _ = preprocessor((poff_img, poff_qbpm))
+                        
+                        if proc_poff.size > 0:
+                            batch_sum = proc_poff.sum(axis=0)
+                            batch_cnt = proc_poff.shape[0]
 
-        merged_poff = None
-        merged_poff_qbpm = None
-        if batch_poff:
-            merged_poff = np.concatenate(batch_poff, axis=0)
-            merged_poff_qbpm = np.concatenate(batch_poff_qbpm, axis=0)
+                            if acc["poff_sum"] is None:
+                                acc["poff_sum"] = batch_sum.astype(np.float64)
+                            else:
+                                acc["poff_sum"] += batch_sum
+                            acc["poff_count"] += batch_cnt
 
-            # [Optimization] Immediate memory release
-            batch_poff = None
-            batch_poff_qbpm = None
-
-        # 4. Preprocess & Average
+        # 3. 최종 평균 계산 (Finalize)
+        # 누적된 합계(Sum)를 개수(Count)로 나눠서 평균 이미지 생성
         batch_output = defaultdict(dict)
 
-        for name, preprocessor in self.preprocessor.items():
+        for name, acc in accumulators.items():
+            if not acc["delays"]:
+                continue
+            
+            # 대표 딜레이 (평균값 사용)
+            rep_delay = float(np.mean(acc["delays"]))
+            rep_delay = round(rep_delay, 6)
+
             res = {}
+            if acc["pon_count"] > 0:
+                res["pon"] = acc["pon_sum"] / acc["pon_count"]
+            
+            if acc["poff_count"] > 0:
+                res["poff"] = acc["poff_sum"] / acc["poff_count"]
 
-            # Process PON
-            if merged_pon is not None:
-                # Preprocess the entire merged stack
-                proc_pon, _ = preprocessor((merged_pon, merged_pon_qbpm))
-
-                if proc_pon.size > 0:
-                    res["pon"] = proc_pon.mean(axis=0)
-
-            # Process POFF
-            if merged_poff is not None:
-                proc_poff, _ = preprocessor((merged_poff, merged_poff_qbpm))
-
-                if proc_poff.size > 0:
-                    res["poff"] = proc_poff.mean(axis=0)
-
-            # Save result using the representative delay
             if res:
                 batch_output[name][rep_delay] = res
 
