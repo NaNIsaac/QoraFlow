@@ -1,5 +1,4 @@
 import h5py
-import hdf5plugin  # pylint: disable=unused-import
 import numpy as np
 import numpy.typing as npt
 from scipy.io import savemat

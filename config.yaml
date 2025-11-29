@@ -1,14 +1,14 @@
 runs:
-  [8]
+  [165]
 
 path:
   log_dir: ./logs
 
-  # load_dir: D:\data\240821_PAL_delay
-  # analysis_dir: ${path.load_dir}/analysis
+  load_dir: D:\data\240821_PAL_delay
+  analysis_dir: ${path.load_dir}/analysis
 
-  load_dir: /xfel/ffs/dat/ue_240819_FXS/raw_data/h5/type=raw/
-  analysis_dir: /home/xssmgr/Desktop/sogang251128/analysis
+  # load_dir: /xfel/ffs/dat/ue_240819_FXS/raw_data/h5/type=raw/
+  # analysis_dir: /home/xssmgr/Desktop/sogang251128/analysis
 
   output_dir: ${path.analysis_dir}/output_data
   mat_dir: ${path.analysis_dir}/mat_files
