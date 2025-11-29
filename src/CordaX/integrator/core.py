@@ -62,7 +62,11 @@ class CoreIntegrator:
 
         # Bundle files in merge_num unit and process
         batches = list(batched(hdf5_files, self.merge_num))
-        desc = f"Processing {scan_dir.name} (bundles={self.merge_num})"
+        run_scan = (
+            int(scan_dir.parent.name.split("=")[1]),
+            int(scan_dir.name.split("=")[1])
+        )
+        desc = f"Processing {run_scan} (bundles={self.merge_num})"
 
         pbar = tqdm(batches, desc=desc, unit="group")
 

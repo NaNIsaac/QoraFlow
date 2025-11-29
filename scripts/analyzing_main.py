@@ -10,10 +10,6 @@ from roi_rectangle import RoiRectangle
 
 from CordaX.analyzer.core import DataAnalyzer
 from CordaX.analyzer.draw_figure import (
-    draw_com_diff_figure,
-    draw_com_figure,
-    draw_intensity_diff_figure,
-    draw_intensity_figure,
     patch_rectangle,
     Visualizer
 )
@@ -61,7 +57,7 @@ def main() -> None:
 
         # TODO: Refactor the logic
         plot_imgs = (poff_images + pon_images)
-        plot_imgs = (plot_imgs - np.min(plot_imgs)) / np.std(plot_imgs) * 1e4
+        plot_imgs = (plot_imgs - np.min(plot_imgs)) / np.std(plot_imgs) * 1e3
         if  not (roi := RoiSelector().select_roi(np.log1p(np.mean(plot_imgs, 0)))):
             err_msg: str = f"No ROI Rectangle Set for run={run_num}, scan={scan_num}"
             logger.error(err_msg)

@@ -1,5 +1,5 @@
 runs:
-  [32]
+  [33, 66, 71]
 
 path:
   log_dir: ./logs

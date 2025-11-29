@@ -164,18 +164,33 @@ def pixel_to_del_q(pixels: npt.NDArray) -> npt.NDArray:
     return 4 * np.pi / wavelength * np.sin(del_two_theta / 2)
 
 
-def pixel_to_q(pixels: npt.NDArray) -> npt.NDArray:
+def pixel2q(pixels: npt.NDArray) -> npt.NDArray:
     """
-    two_theta = arctan(dps * pixels / sdd)
-    Q = (4 * pi / wavelength) * sin(two_theta / 2)
-      = (4 * pi / wavelength) * two_theta / 2
-      = (4 * pi / wavelength) * arctan(dps * pixels / sdd) / 2
-      = pixels * (4 * pi / wavelength) * arctan(dps / sdd) / 2
+    Calculate exact Q values based on detector geometry.
+    
+    Formula:
+      r = pixels * pixel_size
+      2theta = arctan(r / sdd)
+      Q = (4 * pi / wavelength) * sin(2theta / 2)
     """
     config = ConfigManager.load_config()
+    
     wavelength = get_wavelength(config.param.beam_energy)
-    two_theta = np.arctan2(config.param.dps, config.param.sdd * pixels)
-    return 4 * np.pi / wavelength * np.sin(two_theta / 2)
+    sdd = config.param.sdd
+    pixel_size = config.param.dps  # dps가 pixel size라고 가정
+    
+    # 1. 검출기 중심으로부터의 물리적 거리 (Physical distance from center)
+    distance = pixels * pixel_size
+    
+    # 2. 산란각 2theta 계산 (No approximation)
+    # arctan2(y, x) -> y: distance, x: sdd
+    two_theta = np.arctan2(distance, sdd)
+    
+    # 3. Q vector 계산 (Bragg's Law formulation)
+    # theta = two_theta / 2
+    q_values = (4 * np.pi / wavelength) * np.sin(two_theta / 2.0)
+    
+    return q_values
 
 
 def mul_delta_q(pixels: npt.NDArray) -> npt.NDArray:

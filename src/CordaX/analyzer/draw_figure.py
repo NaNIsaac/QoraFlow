@@ -48,6 +48,7 @@ class Visualizer:
         ax.set_xlabel("Delay [ps]")
         ax.set_ylabel("Intensity [a.u.]")
         ax.set_title("Intensity vs Delay")
+        ax.grid(True, linestyle='--', alpha=0.6)
         ax.legend()
 
         plt.tight_layout()
@@ -69,7 +70,6 @@ class Visualizer:
         axs[0].plot(delay, pon_com_x, label="pon_com_x", marker="x", color="r")
         axs[0].set_title("COM X Position")
         axs[0].set_ylabel("Position X($Q_z$) [Å$^{-1}$]")
-        axs[0].legend()
 
         # Plot poff_com_y and pon_com_y
         axs[1].plot(delay, poff_com_y, label="poff_com_y", marker="o", color="g")
@@ -77,7 +77,10 @@ class Visualizer:
         axs[1].set_title("COM Y Position")
         axs[1].set_xlabel("Delay [ps]")
         axs[1].set_ylabel("Position Y(2$\\theta$) [Å$^{-1}$]")
-        axs[1].legend()
+
+        for ax in axs.flatten():
+            ax.grid(True, linestyle='--', alpha=0.6)
+            ax.legend()
 
         plt.tight_layout()
 
@@ -104,6 +107,8 @@ class Visualizer:
         ax.set_xlabel("Delay [ps]")
         ax.set_ylabel("Intensity Difference [a.u.]")
         ax.set_title("Intensity Difference (pon - poff) vs Delay")
+
+        ax.grid(True, linestyle='--', alpha=0.6)
         ax.legend()
 
         plt.tight_layout()
@@ -136,7 +141,6 @@ class Visualizer:
         )
         axs[0].set_title("COM X Position Difference (poff - pon)")
         axs[0].set_ylabel("Position X Difference($Q_z$) [Å$^{-1}$]")
-        axs[0].legend()
 
         # Plot com_y_difference
         axs[1].plot(
@@ -148,8 +152,11 @@ class Visualizer:
         )
         axs[1].set_title("COM Y Position Difference (poff - pon)")
         axs[1].set_xlabel("Delay [ps]")
-        axs[1].set_ylabel("Position Y Difference($Q_xy$) [Å$^{-1}$]")
-        axs[1].legend()
+        axs[1].set_ylabel("Position Y Difference($Q_{xy}$) [Å$^{-1}$]")
+
+        for ax in axs.flatten():
+            ax.grid(True, linestyle='--', alpha=0.6)
+            ax.legend()
 
         plt.tight_layout()
 
