@@ -39,10 +39,10 @@ class DataAnalyzer:
         
         if "pon" not in data:
             self.poff_images: npt.NDArray = data["poff"]
-            self.pon_images: npt.NDArray = np.full_like(data["poff"], 1)
+            self.pon_images: npt.NDArray = np.full_like(data["poff"], 0)
         elif "poff" not in data:
             self.pon_images: npt.NDArray = data["pon"]
-            self.poff_images: npt.NDArray = np.full_like(data["pon"], 1)
+            self.poff_images: npt.NDArray = np.full_like(data["pon"], 0)
         else:
             self.poff_images: npt.NDArray = data["poff"]
             self.pon_images: npt.NDArray = data["pon"]
@@ -70,11 +70,14 @@ class DataAnalyzer:
         self, roi_rect: RoiRectangle, images: npt.NDArray
     ) -> tuple[npt.NDArray, npt.NDArray]:
         roi_images = roi_rect.slice(images)
-        height, width = roi_rect.height, roi_rect.width
-
-        y_coords, x_coords = np.mgrid[:height, :width]
-
         total_mass = np.sum(roi_images, axis=(1, 2))
+
+        # TODO: Modify this line
+        if np.all(total_mass == 0):
+            return np.zeros(len(roi_images)), np.zeros(len(roi_images))
+
+        height, width = roi_rect.height, roi_rect.width
+        y_coords, x_coords = np.mgrid[:height, :width]
         x_centroids = np.sum(x_coords * roi_images, axis=(1, 2)) / total_mass
         y_centroids = np.sum(y_coords * roi_images, axis=(1, 2)) / total_mass
 
@@ -155,11 +158,17 @@ class DataAnalyzer:
 
         roi_df = pd.DataFrame(
             data={
-                "poff_com_x": mul_delta_q(poff_com_x - poff_com_x[0]),
-                "poff_com_y": mul_delta_q(poff_com_y - poff_com_y[0]),
+                # "poff_com_x": mul_delta_q(poff_com_x - poff_com_x[0]),
+                # "poff_com_y": mul_delta_q(poff_com_y - poff_com_y[0]),
+                # "poff_intensity": poff_intensity / poff_intensity[0],
+                # "pon_com_x": mul_delta_q(pon_com_x - pon_com_x[0]),
+                # "pon_com_y": mul_delta_q(pon_com_y - pon_com_y[0]),
+                # "pon_intensity": pon_intensity / pon_intensity[0],
+                "poff_com_x": mul_delta_q(poff_com_x),
+                "poff_com_y": mul_delta_q(poff_com_y),
                 "poff_intensity": poff_intensity / poff_intensity[0],
-                "pon_com_x": mul_delta_q(pon_com_x - pon_com_x[0]),
-                "pon_com_y": mul_delta_q(pon_com_y - pon_com_y[0]),
+                "pon_com_x": mul_delta_q(pon_com_x),
+                "pon_com_y": mul_delta_q(pon_com_y),
                 "pon_intensity": pon_intensity / pon_intensity[0],
                 # "poff_gussian_com_x": poff_gussian_com_x,
                 # "poff_gussian_com_y": poff_gussian_com_y,
@@ -170,4 +179,5 @@ class DataAnalyzer:
             }
         )
         roi_df = roi_df.set_index(self.delay)
+        print(self.delay)
         return roi_df

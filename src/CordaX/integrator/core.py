@@ -113,42 +113,40 @@ class CoreIntegrator:
         loaders: list[RawDataLoader],
     ) -> dict[str, dict[float, dict[str, Any]]]:
         """
-        [Corrected]
-        Incrementally processes chunks from loaders and accumulates sums.
-        Memory usage remains low regardless of total file size.
+        [Modified]
+        Incrementally processes chunks.
+        **Delay Logic**: Uses ONLY the delay value from the FIRST file in the batch.
         """
-        # 1. 누적기 초기화
+        # 1. 누적기 초기화 (delays 리스트 제거함)
         accumulators = defaultdict(lambda: {
             "pon_sum": None, "pon_count": 0,
-            "poff_sum": None, "poff_count": 0,
-            "delays": []
+            "poff_sum": None, "poff_count": 0
         })
 
+        # 배치의 대표 딜레이 (첫 번째 파일에서 추출)
+        representative_delay: float | None = None
+
         # 2. 모든 로더에 대해 반복
-        for loader in loaders:
-            # [핵심] 청크 단위(예: 100장)로 조금씩 가져옴
+        for i, loader in enumerate(loaders):
+            # 청크 단위 로드
             for chunk_data in loader.get_chunked_data(chunk_size=self.chunk_size):
                 
-                if "delay" not in chunk_data:
-                    continue
-                current_delay = float(chunk_data["delay"])
+                # [핵심 변경] 첫 번째 파일(i==0)의 첫 번째 유효 딜레이만 가져옴
+                if i == 0 and representative_delay is None and "delay" in chunk_data:
+                    representative_delay = float(chunk_data["delay"])
                 
                 # 전처리기별 수행
                 for name, preprocessor in self.preprocessor.items():
                     acc = accumulators[name]
-                    acc["delays"].append(current_delay)
 
                     # --- Pump On ---
                     if "pon" in chunk_data:
                         pon_img = chunk_data["pon"]
-                        # QBPM 없으면 1로 채움
                         pon_qbpm = chunk_data.get("pon_qbpm", np.ones(len(pon_img)))
                         
-                        # 전처리 (100장 단위)
                         proc_pon, _ = preprocessor((pon_img, pon_qbpm))
                         
                         if proc_pon.size > 0:
-                            # 합계(Sum)만 누적 (메모리 절약)
                             batch_sum = proc_pon.sum(axis=0)
                             batch_cnt = proc_pon.shape[0]
 
@@ -176,17 +174,17 @@ class CoreIntegrator:
                             acc["poff_count"] += batch_cnt
 
         # 3. 최종 평균 계산 (Finalize)
-        # 누적된 합계(Sum)를 개수(Count)로 나눠서 평균 이미지 생성
+        
+        # 딜레이가 없으면 해당 배치는 저장 불가
+        if representative_delay is None:
+            return {}
+
+        # 부동소수점 보정
+        final_delay_key = round(representative_delay, 6)
+        
         batch_output = defaultdict(dict)
 
         for name, acc in accumulators.items():
-            if not acc["delays"]:
-                continue
-            
-            # 대표 딜레이 (평균값 사용)
-            rep_delay = float(np.mean(acc["delays"]))
-            rep_delay = round(rep_delay, 6)
-
             res = {}
             if acc["pon_count"] > 0:
                 res["pon"] = acc["pon_sum"] / acc["pon_count"]
@@ -195,7 +193,7 @@ class CoreIntegrator:
                 res["poff"] = acc["poff_sum"] / acc["poff_count"]
 
             if res:
-                batch_output[name][rep_delay] = res
+                batch_output[name][final_delay_key] = res
 
         return batch_output
 

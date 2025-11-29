@@ -15,6 +15,7 @@ from CordaX.analyzer.draw_figure import (
     draw_intensity_diff_figure,
     draw_intensity_figure,
     patch_rectangle,
+    Visualizer
 )
 from CordaX.config import ConfigManager
 from CordaX.config import ExpConfig
@@ -56,9 +57,12 @@ def main() -> None:
         processor: DataAnalyzer = DataAnalyzer(npz_file)
         poff_images: npt.NDArray = processor.poff_images
         pon_images: npt.NDArray = processor.pon_images
-
         # Select ROI using GUI
-        if  not (roi := RoiSelector().select_roi(np.log1p(poff_images.mean(axis=0)))):
+
+        # TODO: Refactor the logic
+        plot_imgs = (poff_images + pon_images)
+        plot_imgs = (plot_imgs - np.min(plot_imgs)) / np.std(plot_imgs) * 1e4
+        if  not (roi := RoiSelector().select_roi(np.log1p(np.mean(plot_imgs, 0)))):
             err_msg: str = f"No ROI Rectangle Set for run={run_num}, scan={scan_num}"
             logger.error(err_msg)
             raise ValueError(err_msg)
@@ -94,17 +98,17 @@ def main() -> None:
             file_path = output_dir / filename
             tifffile.imwrite(file_path, image_data.astype(np.float32))
             logger.info(f"Saved TIF '{file_path}'")
-
+        vis = Visualizer(data_df, f"run={run_num}")
         # Save Figures
         figures_to_save = {
             "log_image.png": patch_rectangle(
                 np.log1p(processor.poff_images.sum(axis=0)),
                     *roi_rect.to_tuple()
             ),
-            "delay-intensity.png": draw_intensity_figure(data_df),
-            "delay-intensity_diff.png": draw_intensity_diff_figure(data_df),
-            "delay-com.png": draw_com_figure(data_df),
-            "delay-com_diff.png": draw_com_diff_figure(data_df),
+            "delay-intensity.png": vis.draw_intensity_figure(),
+            "delay-intensity_diff.png": vis.draw_intensity_diff_figure(),
+            "delay-com.png": vis.draw_com_figure(),
+            "delay-com_diff.png": vis.draw_com_diff_figure(),
         }
         for filename, fig in figures_to_save.items():
             file_path = output_dir / filename

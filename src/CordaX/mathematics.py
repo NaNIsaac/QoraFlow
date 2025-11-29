@@ -183,8 +183,11 @@ def mul_delta_q(pixels: npt.NDArray) -> npt.NDArray:
     two_theta = np.arctan2(config.param.dps, config.param.sdd)
     wavelength = get_wavelength(config.param.beam_energy)
     delta_q = (4 * np.pi / wavelength) * two_theta
-    del_pixels = pixels - pixels[0]
-    return del_pixels * delta_q
+
+    # TODO: Modify it
+    return pixels * delta_q
+    # del_pixels = pixels - pixels[0]
+    # return del_pixels * delta_q
 
 
 def non_outlier_indices_percentile(
