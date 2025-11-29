@@ -1,5 +1,5 @@
 runs:
-  [75, 76, 77, 78, 79, 80]
+  [83]
 
 path:
   log_dir: ./logs
@@ -15,9 +15,9 @@ path:
   processed_dir: ${path.analysis_dir}/processed_data
 
 param:
-  merge_num: 1
-  chunk_size: 100
-  pump_setting: 0HZ
+  merge_num: 7
+  chunk_size: 150
+  pump_setting: 30HZ
   hutch: eh1
   detector: jungfrau2
   xray: HX

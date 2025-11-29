@@ -39,7 +39,7 @@ def setup_preprocessors(scan_dir: Path) -> dict[str, ImagesQbpmProcessor]:
     )
 
     return {
-        "standard": standard,
+        "": standard,
     }
 
 

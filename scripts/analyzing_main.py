@@ -25,7 +25,7 @@ def main() -> None:
     ConfigManager.initialize("config.yaml")
     config: ExpConfig = ConfigManager.load_config()
     logger: Logger = setup_logger()
-    suffix: str = "standard"
+    suffix: str = ""
     run_nums: list[int] = config.runs
     logger.info(f"Data Analysing run={run_nums}")
     for run_num in run_nums:
