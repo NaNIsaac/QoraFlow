@@ -31,7 +31,7 @@ def main() -> None:
     for run_num in run_nums:
         scan_num: int = 1
         now = datetime.now()
-        roi_name: str = now.strftime("%Y%m%d_%H%M%S")
+        last_dir_name: str = now.strftime("%Y%m%d_%H%M%S")
 
         processed_dir: Path = config.path.processed_dir
         file_name: str = f"run={run_num:0>4}_scan={scan_num:0>4}"
@@ -71,7 +71,7 @@ def main() -> None:
 
         # Define save directory
         output_dir: Path = make_run_scan_dir(
-            config.path.output_dir, run_num, scan_num, sub_path=roi_name
+            config.path.output_dir, run_num, scan_num, sub_path=last_dir_name
         )
         output_dir.mkdir(parents=True, exist_ok=True)
 
