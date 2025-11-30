@@ -18,44 +18,81 @@ ImagesQbpm = tuple[npt.NDArray, npt.NDArray]
 ImagesQbpmProcessor = Callable[[ImagesQbpm], ImagesQbpm]
 
 
+# --- [Top-Level Helper Functions for Pickling] ---
+
+def _filter_and_normalize_by_qbpm_impl(roi_rect: RoiRectangle | None, images_qbpm: ImagesQbpm) -> ImagesQbpm:
+    """Implementation for QBPM filtering and normalization."""
+    images, qbpm = images_qbpm
+    
+    if roi_rect is None:
+        roi_images = images
+    else:
+        roi_images = roi_rect.slice(images)
+
+    # intensity sum within ROI
+    roi_intensities = roi_images.sum((1, 2))
+
+    # 1. Filter by QBPM range (mean +/- 2*std)
+    qbpm_mask = np.logical_and(
+        qbpm > qbpm.mean() - qbpm.std() * 2,
+        qbpm < qbpm.mean() + qbpm.std() * 2,
+    )
+
+    # 2. Filter by Signal/QBPM Ratio (Outliers)
+    signal_ratios = roi_intensities[qbpm_mask] / qbpm[qbpm_mask]
+    
+    valid = np.logical_and(
+        signal_ratios < np.median(signal_ratios) + np.std(signal_ratios) * 0.3,
+        signal_ratios > np.median(signal_ratios) - np.std(signal_ratios) * 0.3,
+    )
+
+    valid_qbpm = qbpm[qbpm_mask][valid]
+    
+    # Normalize images
+    # Image_new = Image * (Mean_QBPM / Current_QBPM)
+    valid_images = images[qbpm_mask][valid] / valid_qbpm[:, np.newaxis, np.newaxis] * np.mean(valid_qbpm)
+
+    return valid_images, valid_qbpm
+
+
+def _threshold_impl(n: float, images_qbpm: ImagesQbpm) -> ImagesQbpm:
+    """Implementation for thresholding."""
+    images, qbpm = images_qbpm
+    return np.where(images > n, images, 0), qbpm
+
+
+def _remove_ransac_roi_outliers_impl(roi_rect: RoiRectangle, images_qbpm: ImagesQbpm) -> ImagesQbpm:
+    """Implementation for RANSAC outlier removal within ROI."""
+    roi_image = roi_rect.slice(images_qbpm[0])
+    mask = ransac_regression(
+        roi_image.sum(axis=(1, 2)), images_qbpm[1], min_samples=2
+    )[0]
+    return images_qbpm[0][mask], images_qbpm[1][mask]
+
+
+# --- [Factory Functions] ---
+
 def make_qbpm_roi_normalizer(roi_rect: RoiRectangle | None) -> ImagesQbpmProcessor:
-
-    def filter_and_normalize_by_qbpm(images_qbpm: ImagesQbpm) -> ImagesQbpm:
-        images, qbpm = images_qbpm
-        if roi_rect is None:
-            roi_images = images
-        else:
-            roi_images = roi_rect.slice(images)
-
-        roi_intensities = roi_images.sum((1, 2))
-
-        qbpm_mask = np.logical_and(
-            qbpm > qbpm.mean() - qbpm.std() * 2,
-            qbpm < qbpm.mean() + qbpm.std() * 2,
-        )
-
-        signal_ratios = roi_intensities[qbpm_mask] / qbpm[qbpm_mask]
-
-        valid = np.logical_and(
-            signal_ratios < np.median(signal_ratios) + np.std(signal_ratios) * 0.3,
-            signal_ratios > np.median(signal_ratios) - np.std(signal_ratios) * 0.3,
-        )
-
-        valid_qbpm = qbpm[qbpm_mask][valid]
-        valid_images = images[qbpm_mask][valid] / valid_qbpm[:, np.newaxis, np.newaxis] * np.mean(valid_qbpm)
-
-        return valid_images, qbpm[qbpm_mask][valid]
-
-    return filter_and_normalize_by_qbpm
+    """Returns a picklable processor for QBPM normalization."""
+    return partial(_filter_and_normalize_by_qbpm_impl, roi_rect)
 
 
 def make_thresholder(n: float) -> ImagesQbpmProcessor:
-    def threshold(images_qbpm: ImagesQbpm) -> ImagesQbpm:
-        images, qbpm = images_qbpm
-        return np.where(images > n, images, 0), qbpm
+    """Returns a picklable processor for thresholding."""
+    return partial(_threshold_impl, n)
 
-    return threshold
 
+def create_ransac_roi_outlier_remover(roi_rect: RoiRectangle) -> ImagesQbpmProcessor:
+    """Returns a picklable processor for RANSAC outlier removal."""
+    return partial(_remove_ransac_roi_outliers_impl, roi_rect)
+
+
+def create_linear_model_outlier_remover(sigma: float) -> ImagesQbpmProcessor:
+    """Returns a picklable processor for Linear Model outlier removal."""
+    return partial(filter_images_qbpm_by_linear_model, sigma=sigma)
+
+
+# --- [Standard Processors] ---
 
 def no_negative(images_qbpm: ImagesQbpm) -> ImagesQbpm:
     """No value below zero"""
@@ -63,109 +100,28 @@ def no_negative(images_qbpm: ImagesQbpm) -> ImagesQbpm:
 
 
 def shift_to_positive(images_qbpm: ImagesQbpm) -> ImagesQbpm:
-    """
-    Shift the images to ensure all values are non-negative by adding a bias.
-
-    This function adds a bias to the images to ensure that all pixel values are non-negative.
-    The bias is calculated as the absolute value of the minimum pixel value in the images.
-
-    Parameters:
-    - images_qbpm (tuple[Images, Qbpm]): tuple of Images and Qbpm
-
-    Returns:
-    - tuple[Images, Qbpm]: A tuple containing the shifted images and the original QBPM values.
-    """
+    """Shift images to ensure non-negative values."""
     return add_bias(images_qbpm[0]), images_qbpm[1]
 
 
 def subtract_dark_background(images_qbpm: ImagesQbpm) -> ImagesQbpm:
-    """
-    Remove the dark background from the images.
-
-    Parameters:
-    - images_qbpm (tuple[Images, Qbpm]): tuple of Images and Qbpm
-
-    Returns:
-    - tuple[Images, Qbpm]: The images with dark background removed and the original Qbpm values.
-    """
-
+    """Remove dark background."""
     return subtract_dark(images_qbpm[0]), images_qbpm[1]
 
 
 def normalize_images_by_qbpm(images_qbpm: ImagesQbpm) -> ImagesQbpm:
-    """
-    Normalize the images by the Qbpm values.
-
-    Parameters:
-    - images_qbpm (tuple[Images, Qbpm]): tuple of Images and Qbpm
-
-    Returns:
-    - tuple[Images, Qbpm]: The normalized images and the original Qbpm values.
-    """
+    """Normalize images by QBPM values."""
     return div_images_by_qbpm(images_qbpm[0], images_qbpm[1]), images_qbpm[1]
 
 
 def remove_outliers_using_ransac(images_qbpm: ImagesQbpm) -> ImagesQbpm:
-    """
-    Remove outliers from the images and Qbpm values using RANSAC regression.
-
-    Parameters:
-    - images_qbpm (tuple[Images, Qbpm]): tuple of Images and Qbpm
-
-    Returns:
-    - tuple[Images, Qbpm]: The images and Qbpm values with outliers removed.
-    """
+    """Remove outliers using RANSAC on total intensity."""
     mask = ransac_regression(
         images_qbpm[0].sum(axis=(1, 2)), images_qbpm[1], min_samples=2
     )[0]
     return images_qbpm[0][mask], images_qbpm[1][mask]
 
 
-def create_ransac_roi_outlier_remover(roi_rect: RoiRectangle) -> ImagesQbpmProcessor:
-    """
-    Create a function to remove outliers using a linear model with a given sigma.
-
-    Parameters:
-    - sigma: float, the sigma value for the outlier removal.
-
-    Returns:
-    - ImageQbpmProcessor: A function that takes ImagesQbpm and returns the filtered ImagesQbpm.
-    """
-
-    def remove_ransac_roi_outliers(images_qbpm: ImagesQbpm) -> ImagesQbpm:
-        roi_image = roi_rect.slice(images_qbpm[0])
-        mask = ransac_regression(
-            roi_image.sum(axis=(1, 2)), images_qbpm[1], min_samples=2
-        )[0]
-        return images_qbpm[0][mask], images_qbpm[1][mask]
-
-    return remove_ransac_roi_outliers
-
-
 def equalize_intensities(images_qbpm: ImagesQbpm) -> ImagesQbpm:
-    """
-    Equalize the intensities of the images while keeping the Qbpm values unchanged.
-
-    Parameters:
-    - images_qbpm (tuple[Images, Qbpm]): tuple of Images and Qbpm
-
-    Returns:
-    - tuple[np.ndarray, np.ndarray]: A tuple containing the brightness-equalized images and the original Qbpm values.
-    """
+    """Equalize image brightness."""
     return equalize_brightness(images_qbpm[0]), images_qbpm[1]
-
-
-def create_linear_model_outlier_remover(sigma) -> ImagesQbpmProcessor:
-    """
-    Create a function to remove outliers using a linear model with a given sigma.
-
-    Parameters:
-    - sigma: float, the sigma value for the outlier removal.
-
-    Returns:
-    - ImageQbpmProcessor: A function that takes ImagesQbpm and returns the filtered ImagesQbpm.
-    """
-    remove_outlier: ImagesQbpmProcessor = partial(
-        filter_images_qbpm_by_linear_model, sigma=sigma
-    )
-    return remove_outlier

@@ -57,8 +57,10 @@ def main() -> None:
         poff_images: npt.NDArray = processor.poff_images
         pon_images: npt.NDArray = processor.pon_images
 
+        plot_img = (pon_images + poff_images).mean(0)
+
         # Select ROI using GUI
-        if  not (roi := RoiSelector().select_roi(np.log1p(poff_images.mean(axis=0)))):
+        if  not (roi := RoiSelector().select_roi(np.log1p(plot_img))):
             err_msg: str = f"No ROI Rectangle Set for run={run_num}, scan={scan_num}"
             logger.error(err_msg)
             raise ValueError(err_msg)

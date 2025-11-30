@@ -16,8 +16,9 @@ path:
 
 param:
   merge_num: 1
-  chunk_size: 100
-  pump_setting: 15HZ
+  pump_setting: 30HZ
+  beam_energy: 9
+
   hutch: eh1
   detector: jungfrau2
   xray: HX
@@ -27,4 +28,3 @@ param:
   x2: 3
   sdd: 1.3
   dps: 7.5e-05
-  beam_energy: 9.7

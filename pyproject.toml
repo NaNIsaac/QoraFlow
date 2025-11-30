@@ -17,7 +17,7 @@ dependencies = [
     'numpy',
     'pandas',
     'pydantic',
-    "pyqt5>=5.15.11",
+    "pyqt6",
     'radon',
     'roi-rectangle',
     'scikit-image',
@@ -26,11 +26,10 @@ dependencies = [
     'tables',
     'tifffile',
     'tqdm',
-    'tuna',
 ]
 
 [dependency-groups]
 dev = [
-    "memory-profiler",
+    "snakeviz",
     "ruff",
 ]

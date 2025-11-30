@@ -57,8 +57,7 @@ def integrate_scan(run_n: int, scan_n: int) -> None:
     integrator: CoreIntegrator = CoreIntegrator(
         PalXFELLoader,
         merge_num=config.param.merge_num,
-        chunk_size=config.param.chunk_size,
-        preprocessor=preprocessors, 
+        processors=preprocessors, 
         logger=logger
     )
     integrator.run(scan_dir)

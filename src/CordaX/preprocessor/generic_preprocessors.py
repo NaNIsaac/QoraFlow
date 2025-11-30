@@ -1,6 +1,6 @@
 from functools import lru_cache
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -10,6 +10,7 @@ from sklearn.linear_model import RANSACRegressor
 from ..config import ConfigManager
 from ..logger import setup_logger
 
+# Logger setup at module level
 logger = setup_logger()
 
 def ransac_regression(
@@ -27,15 +28,26 @@ def ransac_regression(
     - tuple[npt.NDArray[np.bool_], npt.NDArray, npt.NDArray]:
         A tuple containing the inlier mask, coefficient, and intercept of the linear model.
     """
+    # Safety check for small datasets
+    if len(y) < 2:
+        return np.ones(len(y), dtype=bool), np.array([0]), 0.0
+
     X = x[:, np.newaxis]
-    ransac = RANSACRegressor(min_samples=min_samples).fit(X, y)
-    inlier_mask = ransac.inlier_mask_
-    return inlier_mask, ransac.estimator_.coef_, ransac.estimator_.intercept_
+    # Ensure min_samples is valid
+    ms = min_samples if min_samples is not None else max(2, int(len(y) * 0.1))
+    
+    try:
+        ransac = RANSACRegressor(min_samples=ms).fit(X, y)
+        inlier_mask = ransac.inlier_mask_
+        return inlier_mask, ransac.estimator_.coef_, ransac.estimator_.intercept_
+    except ValueError:
+        logger.warning("RANSAC fitting failed (too few samples or noise). Returning all True mask.")
+        return np.ones(len(y), dtype=bool), np.array([0]), 0.0
 
 
 def get_linear_regression_confidence_bounds(
     y: npt.NDArray, x: npt.NDArray, sigma: float
-) -> npt.NDArray:
+) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
     """
     Get lower and upper bounds for data points based on their confidence interval in a linear regression model.
 
@@ -62,22 +74,28 @@ def get_linear_regression_confidence_bounds(
     This method assumes a linear relationship in the data. For strong non-linearities,
     a different approach may be necessary.
     """
+    if len(y) < 2:
+        return y, y, y
 
     def linear_model(x, m, b):
         return m * x + b
 
-    params, covars = curve_fit(linear_model, x, y)
+    try:
+        params, covars = curve_fit(linear_model, x, y)
+        m, b = params
+        m_err, b_err = np.sqrt(np.diag(covars))
+        y_fit = linear_model(x, m, b)
 
-    m, b = params
-    m_err, b_err = np.sqrt(np.diag(covars))
-    y_fit = linear_model(x, m, b)
+        # Calculate upper and lower bounds considering both slope and intercept errors
+        error = np.sqrt((m_err * x) ** 2 + b_err**2)
+        upper_bound = y_fit + error * sigma
+        lower_bound = y_fit - error * sigma
 
-    # Calculate upper and lower bounds considering both slope and intercept errors
-    error = np.sqrt((m_err * x) ** 2 + b_err**2)
-    upper_bound = y_fit + error * sigma
-    lower_bound = y_fit - error * sigma
-
-    return lower_bound, upper_bound, y_fit
+        return lower_bound, upper_bound, y_fit
+    except Exception as e:
+        logger.warning(f"Linear regression failed: {e}")
+        # Fail-safe: Return infinite bounds so no data is filtered
+        return y - np.inf, y + np.inf, y
 
 
 def filter_images_qbpm_by_linear_model(
@@ -130,18 +148,23 @@ def div_images_by_qbpm(images: npt.NDArray, qbpm: npt.NDArray) -> npt.NDArray:
     Returns:
     NDArray: Images that divided by qbpm
     """
-    return images * qbpm.mean() / qbpm[:, np.newaxis, np.newaxis]
+    # Prevent division by zero
+    safe_qbpm = np.where(qbpm == 0, 1, qbpm)
+    return images * safe_qbpm.mean() / safe_qbpm[:, np.newaxis, np.newaxis]
+
 
 @lru_cache(maxsize=1)
 def _load_cached_dark_image(dark_file_path: Path) -> Optional[np.ndarray]:
     """
-    Load dark image only ONCE and cache it in RAM.
+    [Optimization] Load dark image only ONCE and cache it in RAM.
+    This prevents IO bottleneck when processing thousands of chunks.
     """
     if not dark_file_path.exists():
         logger.warning(f"No dark image file found: \"{dark_file_path}\"")
         return None
     try:
         dark_images = np.load(dark_file_path)
+        # If multiple dark frames exist, average them
         if dark_images.ndim == 3:
             return np.mean(dark_images, axis=0)
         return dark_images
@@ -149,20 +172,29 @@ def _load_cached_dark_image(dark_file_path: Path) -> Optional[np.ndarray]:
         logger.error(f"Failed to load dark image: {e}")
         return None
 
+
 def subtract_dark(images: npt.NDArray) -> npt.NDArray:
     """
     Subtract dark background. Uses caching for performance.
+
+    Parameters:
+    - images (npt.NDArray): Input images.
+
+    Returns:
+    - npt.NDArray: Background subtracted images.
     """
     config = ConfigManager.load_config()
     dark_file = config.path.analysis_dir / "dark_images" / "dark.npy"
 
+    # Use cached loader
     dark = _load_cached_dark_image(dark_file)
 
     if dark is None:
         return images
 
     none_negative_dark = np.maximum(dark, 0)
-
+    
+    # Broadcasting subtraction: (N, H, W) - (1, H, W)
     return np.maximum(0, images - none_negative_dark[np.newaxis, :, :])
 
 
@@ -182,7 +214,18 @@ def equalize_brightness(images: np.ndarray) -> np.ndarray:
     - np.ndarray: The brightness-equalized images.
     """
     intensites = images.sum(axis=(1, 2))
-    overal_normed_intensites = intensites / intensites.mean()
+    mean_intensity = intensites.mean()
+    
+    if mean_intensity == 0:
+        return images
+        
+    overal_normed_intensites = intensites / mean_intensity
+    
+    # Prevent division by zero
+    overal_normed_intensites = np.where(
+        overal_normed_intensites == 0, 1, overal_normed_intensites
+    )
+    
     equalized_images = images / overal_normed_intensites[:, np.newaxis, np.newaxis]
 
     return equalized_images

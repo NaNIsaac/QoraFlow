@@ -4,19 +4,31 @@ This module is designed to support the functional programming paradigm.
 """
 
 from collections.abc import Callable
-from functools import reduce
 from itertools import islice
 
 
-def compose(*funcs: Callable):
-    """Combines multiple functions from right to left.
-    This means the rightmost function is executed first,
-    and its result is passed as input to the next function.
-    In this way, creates a single function from multiple functions
-
-    compose(h, g, f)(x) is equivalent to h(g(f(x)))
+class ComposedFunction:
     """
-    return reduce(lambda f, g: lambda x: f(g(x)), funcs)
+    A class-based replacement for the lambda in compose.
+    This makes the composed function picklable for multiprocessing.
+    """
+    def __init__(self, *funcs):
+        self.funcs = funcs
+
+    def __call__(self, x):
+        # Apply functions from right to left
+        result = x
+        for f in reversed(self.funcs):
+            result = f(result)
+        return result
+
+
+def compose(*funcs: Callable):
+    """
+    Combines multiple functions from right to left.
+    Now returns a picklable ComposedFunction object instead of a lambda.
+    """
+    return ComposedFunction(*funcs)
 
 
 def batched(iterable, n):
@@ -27,3 +39,7 @@ def batched(iterable, n):
     it = iter(iterable)
     while batch := tuple(islice(it, n)):
         yield batch
+
+def identity(x):
+    """Picklable identity function instead of lambda"""
+    return x

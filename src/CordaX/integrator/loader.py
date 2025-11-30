@@ -1,6 +1,7 @@
+import os
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Sequence, Union
+from typing import Any, Callable, Tuple, Dict
 
 import h5py
 import hdf5plugin  # noqa: F401
@@ -11,76 +12,22 @@ import pandas as pd
 from ..config import ExpConfig, ConfigManager
 from ..config.enums import Hertz
 from ..logger import Logger, setup_logger
-from ..preprocessor.image_qbpm_preprocessor import ImagesQbpmProcessor
 
-class LazyImageSequence(Sequence):
-    """Proxy object for HDF5 dataset to enable lazy loading via slicing."""
-    def __init__(self, h5_file_path: Path, dataset_path: str, indices: np.ndarray):
-        self.h5_file_path = h5_file_path
-        self.dataset_path = dataset_path
-        self.indices = indices
-        self._shape = None
-        self._dtype = None
-
-    def _load_meta_info(self):
-        with h5py.File(self.h5_file_path, "r") as f:
-            ds = f[self.dataset_path]
-            self._shape = (len(self.indices),) + ds.shape[1:]
-            self._dtype = ds.dtype
-
-    @property
-    def shape(self) -> tuple:
-        if self._shape is None: self._load_meta_info()
-        return self._shape
-
-    @property
-    def dtype(self):
-        if self._dtype is None: self._load_meta_info()
-        return self._dtype
-
-    def __len__(self) -> int:
-        return len(self.indices)
-
-    def __getitem__(self, key: Union[int, slice, np.ndarray]) -> np.ndarray:
-        if isinstance(key, slice):
-            target_indices = self.indices[key]
-        elif isinstance(key, int):
-            if key < 0: key += len(self)
-            if key >= len(self) or key < 0: raise IndexError("Index out of range")
-            target_indices = [self.indices[key]]
-        elif isinstance(key, (np.ndarray, list)):
-            target_indices = self.indices[key]
-        else:
-            raise TypeError(f"Invalid index type: {type(key)}")
-
-        if len(target_indices) == 0:
-            return np.empty((0,) + self.shape[1:], dtype=self.dtype)
-
-        with h5py.File(self.h5_file_path, "r") as f:
-            ds = f[self.dataset_path]
-            loaded_data = ds[target_indices] if isinstance(target_indices, np.ndarray) else ds[target_indices]
-                
-        if isinstance(key, int): return loaded_data[0]
-        return loaded_data
+# Type alias
+PreprocessorFunc = Callable[[Tuple[np.ndarray, np.ndarray]], Tuple[np.ndarray, np.ndarray]]
 
 
 class RawDataLoader(ABC):
+    """Abstract Base Class for Data Loaders."""
+    
     @abstractmethod
     def __init__(self, file: Path | str) -> None: ...
 
     @abstractmethod
-    def get_data(self) -> dict[str, Any]: ...
+    def get_data(self) -> Dict[str, Any]: ...
     
     @abstractmethod
-    def calculate_statistics(
-        self, 
-        preprocessor: ImagesQbpmProcessor, 
-        chunk_size: int = 100
-    ) -> dict[str, Any]:
-        """
-        Calculates Sum and Count for the file using the given preprocessor.
-        """
-        pass
+    def calculate_statistics(self, preprocessor: PreprocessorFunc) -> Dict[str, Any]: ...
 
     def close(self): pass
     def __enter__(self): return self
@@ -88,234 +35,243 @@ class RawDataLoader(ABC):
 
 
 class PalXFELLoader(RawDataLoader):
+    """
+    [Standard Loader for PAL-XFEL]
+    - Sequential I/O Optimized: Reads full dataset to maximize disk throughput.
+    - Handles Hertz.ZERO (All POFF) and Alignment logic.
+    """
+
     def __init__(self, file: Path | str):
-        self.file: Path = Path(file)
+        self.file = Path(file)
         if not self.file.exists():
-            raise FileNotFoundError(f"No such file: {str(self.file)}")
+            raise FileNotFoundError(f"File not found: {self.file}")
 
         self.logger: Logger = setup_logger()
         self.config: ExpConfig = ConfigManager.load_config()
 
-        # Load Metadata
-        metadata: pd.DataFrame = pd.read_hdf(self.file, key="metadata")
-        self._merged_df: pd.DataFrame = self._get_valid_df(metadata)
+        self._cached_data: Dict[str, Any] | None = None
+        self._image_path_str = f"detector/{self.config.param.hutch.value}/{self.config.param.detector.value}/image/block0_values"
+
+        # 1. Load & Align Metadata
+        try:
+            self._merged_df = self._load_and_align_metadata()
+        except Exception as e:
+            raise ValueError(f"Metadata alignment failed in {self.file.name}: {e}")
 
         if self._merged_df.empty:
-            raise ValueError(f"No matching data found in {self.file}")
+            raise ValueError(f"No valid frames found in {self.file.name}")
 
-        self.qbpm: npt.NDArray[np.float32] = np.array(self._merged_df["qbpm"].tolist(), dtype=np.float32)
+        # 2. Extract Info
+        self.qbpm: npt.NDArray[np.float32] = self._merged_df["qbpm"].to_numpy(dtype=np.float32)
         self.pump_state: npt.NDArray[np.bool_] = self._get_pump_mask(self._merged_df)
         self.delay: float = self._get_delay(self._merged_df)
 
-        raw_indices = self._merged_df["original_image_index"].values.astype(np.int64)
-        self.metadata_index: npt.NDArray[np.int64] = np.sort(raw_indices)
-        self._image_path_str = f"detector/{self.config.param.hutch.value}/{self.config.param.detector.value}/image/block0_values"
+        # 3. Store Indices for filtering (Int64 for safe indexing)
+        self.metadata_index: npt.NDArray[np.int64] = np.sort(
+            self._merged_df["original_image_index"].values.astype(np.int64)
+        )
+        
+        self.logger.debug(f"Initialized {self.file.name}: {len(self.metadata_index)} frames.")
 
-        self.logger.debug(f"Initialized {len(self.metadata_index)} frames.")
+    def close(self):
+        self._cached_data = None
 
-    def close(self): pass
+    def _load_and_align_metadata(self) -> pd.DataFrame:
+        """Reads HDF5 structure and merges with pandas metadata."""
+        # Read Pandas Metadata
+        try:
+            metadata: pd.DataFrame = pd.read_hdf(self.file, key="metadata")
+        except (KeyError, FileNotFoundError):
+             # 메타데이터 키가 없는 경우 빈 DF 반환 -> 상위에서 에러 처리
+            return pd.DataFrame()
 
-    def _get_valid_df(self, metadata_df: pd.DataFrame) -> pd.DataFrame:
+        # Filter required columns
+        req_cols = []
+        # Delay Check
+        if "th_value" in metadata.columns: req_cols.append("th_value")
+        elif "delay_value" in metadata.columns: req_cols.append("delay_value")
+        
+        # Pump Check
+        if self.config.param.pump_setting is not Hertz.ZERO:
+            pump_key = f"timestamp_info.RATE_{self.config.param.xray.value}_{self.config.param.pump_setting.value}"
+            if pump_key in metadata.columns:
+                req_cols.append(pump_key)
+
+        subset_meta = metadata[req_cols].dropna() if req_cols else metadata
+
+        # Read HDF5 raw timestamps & Calculate QBPM
         with h5py.File(self.file, "r") as hf:
-            if "detector" not in hf: raise KeyError(f"Key 'detector' not found")
-            image_path = f"detector/{self.config.param.hutch.value}/{self.config.param.detector.value}/image"
+            if "detector" not in hf:
+                raise KeyError("Key 'detector' not found in HDF5")
+            
+            # Paths
+            img_ts_path = f"detector/{self.config.param.hutch.value}/{self.config.param.detector.value}/image"
             qbpm_path = f"qbpm/{self.config.param.hutch.value}/qbpm1"
 
-            images_ts = np.array(hf[image_path]["block0_items"], dtype=np.int64)
-            qbpm_ts = np.array(hf[qbpm_path]["waveforms.ch1/axis1"], dtype=np.int64)
-            qbpm_group = hf[qbpm_path]
-            qbpm = np.sum(np.stack([qbpm_group[f"waveforms.ch{i+1}/block0_values"][:] for i in range(4)], axis=0), axis=(0, 2))
+            # 1. Image Timestamps
+            images_ts = hf[img_ts_path]["block0_items"][:].astype(np.int64)
+            
+            # 2. QBPM Calculation (Summing 4 channels)
+            qbpm_grp = hf[qbpm_path]
+            qbpm_ts = qbpm_grp["waveforms.ch1/axis1"][:].astype(np.int64)
+            
+            # Stack 4 channels and sum: (4, N, 1000) -> (N,)
+            # Reading all channels at once is safer
+            channels = [qbpm_grp[f"waveforms.ch{i+1}/block0_values"][:] for i in range(4)]
+            qbpm_sum = np.sum(np.stack(channels, axis=0), axis=(0, 2))
 
-        image_ts_df = pd.DataFrame({"original_image_index": np.arange(len(images_ts), dtype=np.int64)}, index=images_ts)
-        qbpm_df = pd.DataFrame({"qbpm": list(qbpm)}, index=qbpm_ts)
-        return metadata_df.join(image_ts_df.join(qbpm_df, how="inner"), how="inner")
+        # Merge Logic
+        image_ts_df = pd.DataFrame(
+            {"original_image_index": np.arange(len(images_ts), dtype=np.int64)}, 
+            index=images_ts
+        )
+        qbpm_df = pd.DataFrame({"qbpm": qbpm_sum}, index=qbpm_ts)
 
-    def _get_delay(self, merged_df: pd.DataFrame) -> float:
+        # Join: Metadata <-> ImageTS <-> QBPM
+        return subset_meta.join(image_ts_df.join(qbpm_df, how="inner"), how="inner")
+
+    def _get_delay(self, df: pd.DataFrame) -> float:
+        """Extracts representative delay value."""
         for key in ["th_value", "delay_value"]:
-            if key in merged_df:
-                vals = merged_df[key].dropna()
-                if not vals.empty: return float(vals.iloc[0])
+            if key in df:
+                return float(df[key].iloc[0])
         return np.nan
 
-    def _get_pump_mask(self, merged_df: pd.DataFrame) -> npt.NDArray[np.bool_]:
+    def _get_pump_mask(self, df: pd.DataFrame) -> npt.NDArray[np.bool_]:
+        """Returns boolean mask for Pump-On images."""
         if self.config.param.pump_setting is Hertz.ZERO:
-            return np.zeros(len(merged_df), dtype=np.bool_)
+            return np.zeros(len(df), dtype=bool)
+        
         key = f"timestamp_info.RATE_{self.config.param.xray.value}_{self.config.param.pump_setting.value}"
-        return np.asarray(merged_df[key], dtype=np.bool_) if key in merged_df else np.zeros(len(merged_df), dtype=np.bool_)
+        if key in df:
+            return df[key].to_numpy(dtype=bool)
+        
+        self.logger.warning(f"Pump key {key} missing. Treating as POFF.")
+        return np.zeros(len(df), dtype=bool)
 
-    def get_data(self) -> dict[str, Any]:
-        """Returns Lazy Objects."""
-        data: dict[str, Any] = {"delay": self.delay}
-        pon_mask = self.pump_state
-        poff_mask = ~self.pump_state
+    def get_data(self) -> Dict[str, Any]:
+        """
+        Loads images into RAM. 
+        **Optimized:** Uses Sequential Read (Full Load) instead of Fancy Indexing.
+        """
+        if self._cached_data is not None:
+            return self._cached_data
 
-        if np.any(poff_mask):
-            data["poff"] = LazyImageSequence(self.file, self._image_path_str, self.metadata_index[poff_mask])
-            data["poff_qbpm"] = self.qbpm[poff_mask]
-        if np.any(pon_mask):
-            data["pon"] = LazyImageSequence(self.file, self._image_path_str, self.metadata_index[pon_mask])
-            data["pon_qbpm"] = self.qbpm[pon_mask]
+        with h5py.File(self.file, "r") as hf:
+            ds = hf[self._image_path_str]
+            
+            # [CRITICAL OPTIMIZATION]
+            # Read the ENTIRE dataset sequentially first (Disk Speed)
+            # Then filter by index in Memory (RAM Speed)
+            full_volume = ds[:] 
+            
+            # Filter valid frames
+            valid_images = full_volume[self.metadata_index]
+            
+            # Clean up raw volume from memory immediately
+            del full_volume
+
+        # Apply Pump Mask
+        pon_imgs = valid_images[self.pump_state]
+        poff_imgs = valid_images[~self.pump_state]
+        
+        # Apply ReLU (maximum(0, x))
+        np.maximum(pon_imgs, 0, out=pon_imgs)
+        np.maximum(poff_imgs, 0, out=poff_imgs)
+
+        # Determine shapes for empty fallbacks
+        h, w = (valid_images.shape[1], valid_images.shape[2]) if valid_images.ndim == 3 else (0, 0)
+        dtype = valid_images.dtype
+
+        data = {
+            "delay": self.delay,
+            "pon": pon_imgs if pon_imgs.size > 0 else np.zeros((0, h, w), dtype=dtype),
+            "pon_qbpm": self.qbpm[self.pump_state],
+            "poff": poff_imgs if poff_imgs.size > 0 else np.zeros((0, h, w), dtype=dtype),
+            "poff_qbpm": self.qbpm[~self.pump_state],
+        }
+
+        self._cached_data = data
         return data
 
-    # [NEW FEATURE] Calculate Statistics internally
-    def calculate_statistics(
-        self, 
-        preprocessor: ImagesQbpmProcessor, 
-        chunk_size: int = 100
-    ) -> dict[str, Any]:
-        """
-        Process the file internally in chunks and return the SUM and COUNT.
-        This allows single-file analysis and reduces overhead in CoreIntegrator.
-        """
-        lazy_data = self.get_data()
+    def calculate_statistics(self, preprocessor: PreprocessorFunc) -> Dict[str, Any]:
+        """Calculates Sum and Count for the loaded batch."""
+        data = self.get_data()
+        
         stats = {
             "delay": self.delay,
             "pon_sum": None, "pon_count": 0,
             "poff_sum": None, "poff_count": 0
         }
 
-        # Helper to process a specific state (pon/poff)
-        def process_state(state_key: str, sum_key: str, count_key: str):
-            if state_key not in lazy_data: 
-                return
-            
-            lazy_imgs = lazy_data[state_key]
-            full_qbpm = lazy_data[f"{state_key}_qbpm"]
-            total_frames = len(lazy_imgs)
+        # Helper for processing
+        def process_state(key_img, key_qbpm, out_sum_key, out_count_key):
+            if data[key_img].size > 0:
+                proc_img, _ = preprocessor((data[key_img], data[key_qbpm]))
+                if proc_img.size > 0:
+                    stats[out_sum_key] = proc_img.sum(axis=0, dtype=np.float64)
+                    stats[out_count_key] = proc_img.shape[0]
 
-            for start_idx in range(0, total_frames, chunk_size):
-                end_idx = min(start_idx + chunk_size, total_frames)
-                s = slice(start_idx, end_idx)
-
-                # Load Chunk
-                img_chunk = lazy_imgs[s]
-                qbpm_chunk = full_qbpm[s]
-
-                # Preprocess
-                proc_imgs, _ = preprocessor((img_chunk, qbpm_chunk))
-
-                # Accumulate
-                if proc_imgs.size > 0:
-                    chunk_sum = proc_imgs.sum(axis=0, dtype=np.float64)
-                    chunk_cnt = proc_imgs.shape[0]
-
-                    if stats[sum_key] is None:
-                        stats[sum_key] = chunk_sum
-                    else:
-                        stats[sum_key] += chunk_sum
-                    stats[count_key] += chunk_cnt
-
-        # Run for both states
-        process_state("pon", "pon_sum", "pon_count")
-        process_state("poff", "poff_sum", "poff_count")
+        process_state("pon", "pon_qbpm", "pon_sum", "pon_count")
+        process_state("poff", "poff_qbpm", "poff_sum", "poff_count")
 
         return stats
 
 
-def get_hdf5_images(file: Path | str, config: ExpConfig) -> npt.NDArray:
-
-    """get images form hdf5"""
-
+# --- Compatibility Function ---
+def get_hdf5_images(file: str | Path, config: ExpConfig) -> npt.NDArray:
+    """Legacy function to get all images from HDF5."""
     with h5py.File(file, "r") as hf:
-
         if "detector" not in hf:
-
             raise KeyError(f"Key 'detector' not found in {file}")
-
-        key: str = f"detector/{config.param.hutch.value}/{config.param.detector.value}/image/block0_values"
-
-        images: np.ndarray = hf[key][:]
-
+        
+        key = f"detector/{config.param.hutch.value}/{config.param.detector.value}/image/block0_values"
+        images = hf[key][:] # Full read
         return np.maximum(images, 0)
 
 
+# --- Main Test Block ---
 if __name__ == "__main__":
     import time
-    import os
     import gc
     import psutil
     from ..filesystem import get_run_scan_dir
 
-    # 메모리 측정 헬퍼 함수 (MB 단위)
     def get_current_memory_mb():
         process = psutil.Process(os.getpid())
         return process.memory_info().rss / 1024 / 1024
 
-    # 설정 로드
     ConfigManager.initialize("config.yaml")
     config = ConfigManager.load_config()
-    
-    # 테스트할 파일 경로 (환경에 맞게 수정)
+
+    # 테스트 파일 경로 설정 (예외 처리)
     try:
-        file: Path = get_run_scan_dir(config.path.load_dir, 165, 1, sub_path="p0001.h5")
-        if not file.exists():
-            print(f"File not found: {file}")
+        # P0001.h5 등 테스트 파일 지정
+        target_file = get_run_scan_dir(config.path.load_dir, 165, 1, sub_path="p0001.h5")
+        if not target_file.exists():
+            print(f"Test file not found: {target_file}")
             exit()
     except Exception as e:
-        print(f"Path Error: {e}")
+        print(f"Path setup failed: {e}")
         exit()
 
-    print(f"Target File: {file}")
-    print("=" * 60)
-
-    # ---------------------------------------------------------
-    # 1. Legacy Way: Load All -> Calculate Mean
-    # ---------------------------------------------------------
-    print("[1] Legacy Way (Load All -> Mean)")
-    gc.collect()  # 이전 메모리 정리
-    mem_before = get_current_memory_mb()
+    print(f"Target: {target_file}")
+    print(f"Initial Memory: {get_current_memory_mb():.2f} MB")
+    
+    gc.collect()
     start_time = time.time()
 
     try:
-        # 모든 이미지를 RAM에 로드 (메모리 스파이크 발생 지점)
-        images = get_hdf5_images(file, config)
+        loader = PalXFELLoader(target_file)
         
-        # 평균 계산
-        if images.size > 0:
-            mean_legacy = images.mean(axis=0)
-        
-        end_time = time.time()
-        mem_after = get_current_memory_mb()
-        
-        print(f"  - Execution Time : {end_time - start_time:.4f} sec")
-        print(f"  - Memory Usage   : +{mem_after - mem_before:.2f} MB (Total: {mem_after:.2f} MB)")
-        print(f"  - Result Shape   : {mean_legacy.shape}")
+        # Identity Preprocessor
+        stats = loader.calculate_statistics(lambda x: x)
 
-        # 메모리 해제
-        del images
-        del mean_legacy
+        elapsed = time.time() - start_time
+        print(f"Time: {elapsed:.4f}s")
+        print(f"PON Count: {stats['pon_count']}")
+        print(f"POFF Count: {stats['poff_count']}")
+        print(f"Final Memory: {get_current_memory_mb():.2f} MB")
+        
     except Exception as e:
-        print(f"  - Failed (Likely OOM): {e}")
-
-    # ---------------------------------------------------------
-    # 2. New Way: PalXFELLoader -> calculate_statistics (Chunked)
-    # ---------------------------------------------------------
-    print("\n[2] New Way (Chunked Processing)")
-    gc.collect()  # Legacy에서 쓴 메모리 정리
-    mem_before = get_current_memory_mb()
-    start_time = time.time()
-
-    try:
-        loader = PalXFELLoader(file)
-        
-        # Identity Preprocessor (그냥 통과)
-        # 100장씩 끊어서 로드 -> 합계 누적 -> 메모리 해제 반복
-        stats = loader.calculate_statistics(lambda x: x, chunk_size=100)
-
-        # 결과 계산
-        if stats['pon_count'] > 0:
-            mean_new = stats['pon_sum'] / stats['pon_count']
-        
-        end_time = time.time()
-        mem_after = get_current_memory_mb()
-
-        print(f"  - Execution Time : {end_time - start_time:.4f} sec")
-        print(f"  - Memory Usage   : +{mem_after - mem_before:.2f} MB (Total: {mem_after:.2f} MB)")
-        
-        if 'mean_new' in locals():
-            print(f"  - Result Shape   : {mean_new.shape}")
-
-    except Exception as e:
-        print(f"  - Failed: {e}")
-
-    print("=" * 60)
+        print(f"Loader failed: {e}")
