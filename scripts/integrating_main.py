@@ -4,7 +4,7 @@ from roi_rectangle import RoiRectangle
 
 from CordaX.config import ExpConfig, ConfigManager
 from CordaX.filesystem import get_run_scan_dir, get_scan_nums
-from CordaX.functional import compose
+from CordaX.functional import pipe, identity
 from CordaX.gui.select_roi import auto_roi
 from CordaX.integrator.core import CoreIntegrator
 from CordaX.integrator.loader import PalXFELLoader
@@ -27,20 +27,25 @@ def setup_preprocessors(scan_dir: Path) -> dict[str, ImagesQbpmProcessor]:
     """Return preprocessors"""
 
     # roi_rect: RoiRectangle = select_roi(scan_dir, config, None)
+    # compose make a function that exicuted from right to left: compose(f, g, h) -> h(g(f(x)))
     roi_rect: RoiRectangle = auto_roi(scan_dir, config, None)
+    logger.info(f"Auto selected ROI: {roi_rect}")
+    # filter_and_normalize_by_qbpm = make_qbpm_roi_normalizer(roi_rect)
 
-    filter_and_normalize_by_qbpm = make_qbpm_roi_normalizer(roi_rect)
-    threshold4 = make_thresholder(4)
-    # compose make a function that exicuted from right to left
-    standard = compose(
-        threshold4,
-        filter_and_normalize_by_qbpm,
-        subtract_dark_background
-    )
-
-    return {
-        "standard": standard,
-    }
+    threshold4: ImagesQbpmProcessor = make_thresholder(4)
+    normalize_qbpm: ImagesQbpmProcessor = make_qbpm_roi_normalizer(roi_rect)
+    from itertools import permutations
+    
+    preprocessors: dict[str, ImagesQbpmProcessor] = {}
+    for r in range(1, 4):
+        for ops in permutations([threshold4, normalize_qbpm, subtract_dark_background], r):
+            name = "".join(
+                ["T" if op == threshold4 else "N" if op == normalize_qbpm else "D" for op in ops]
+            )
+            func = pipe(*ops)
+            preprocessors[name] = func
+    preprocessors["raw"] = identity
+    return preprocessors
 
 
 def integrate_scan(run_n: int, scan_n: int) -> None:

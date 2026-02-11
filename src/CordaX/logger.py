@@ -1,51 +1,66 @@
-"""
-Module for setting up a customized logger using the loguru library.
-
-This module provides a function to configure and return a logger instance
-with specific formatting, log file settings, and rotation/compression options.
-
-Log files are stored in the 'logs' directory, organized by date, and named with a timestamp.
-Each log file is rotated when it reaches 500 MB in size and compressed in ZIP format.
-
-Example usage:
-    from logger import setup_logger
-    logger = setup_logger()
-    logger.info("This is an info message.")
-"""
 import sys
 from pathlib import Path
-
-import loguru
+from loguru import logger
 from loguru._logger import Logger
-
 from .config import ConfigManager
 
+_IS_CONFIGURED = False
 
 def setup_logger(level="INFO") -> Logger:
     """
-    Configures and sets up the logger with a custom format and log file settings.
-
-    Returns:
-        Logger: The configured logger instance.
+    Configures the logger. This should be called ONLY ONCE at the application startup.
     """
-    ConfigManager.initialize("config.yaml")
-    config = ConfigManager.load_config()
-    log_dir: Path = config.path.log_dir
+    global _IS_CONFIGURED
+    if _IS_CONFIGURED:
+        return logger
 
-    formatter: str = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {name}:{function}:{line} - {message}"
-    formatter = (
+    # 1. Config 로드
+    ConfigManager.initialize(r"D:\Members\IsaacYong\Dev\CordaX\config.yaml")
+    config = ConfigManager.load_config()
+    log_dir: Path = Path(config.path.log_dir) # Path 객체 보장
+
+    # 2. 포맷 분리 (핵심: 파일에는 색상 코드를 넣지 않음)
+    # Console용 (Color 포함)
+    console_fmt = (
         "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
         "<level>{level: <8}</level> | "
         "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
         "<level>{message}</level>"
     )
-    log_file: str = log_dir / "{time:YYYY-MM-DD}/{time:YYYYMMDD_HHmmss}.log"
+    # File용 (Plain Text)
+    file_fmt = (
+        "{time:YYYY-MM-DD HH:mm:ss.SSS} | "
+        "{level: <8} | "
+        "{name}:{function}:{line} - "
+        "{message}"
+    )
 
-    loguru.logger.remove()
-    loguru.logger.add(log_file, format=formatter, rotation="500 MB", compression="zip", level=level)
-    loguru.logger.add(sys.stdout, format=formatter, level=level)
+    # 3. 파일 경로 설정 (Rotation이 있으므로 파일명에 초 단위 시간은 불필요할 수 있음)
+    # 매번 실행시마다 분리하고 싶다면 유지, 아니라면 'app.log'로 고정하고 rotation에 맡김
+    log_file = log_dir / "{time:YYYY-MM-DD}" / "app_{time:HHmmss}.log"
 
-    return loguru.logger
+    # 4. 핸들러 초기화 (remove는 최초 1회만 수행됨)
+    logger.remove()
+    
+    # Console Handler
+    logger.add(sys.stderr, format=console_fmt, level=level)
+    
+    # File Handler
+    # enqueue=True: 멀티프로세싱/스레드 환경에서 로그 꺠짐 방지 (Async Safe)
+    # backtrace=True, diagnose=True: 에러 발생 시 상세 정보
+    logger.add(
+        log_file, 
+        format=file_fmt, 
+        rotation="500 MB", 
+        compression="zip", 
+        level=level,
+        enqueue=True, 
+        backtrace=True,
+        diagnose=True
+    )
+
+    _IS_CONFIGURED = True
+    return logger
 
 
 if __name__ == "__main__":

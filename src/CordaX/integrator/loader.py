@@ -212,7 +212,7 @@ class PalXFELLoader(RawDataLoader):
         if pon_images.size > 0:
             data["pon"] = pon_images
             data["pon_qbpm"] = pon_qbpm
-
+        data["images"] = images
         return data
 
 

@@ -144,6 +144,8 @@ def _load_cached_dark_image(dark_file_path: Path) -> Optional[np.ndarray]:
         dark_images = np.load(dark_file_path)
         if dark_images.ndim == 3:
             return np.mean(dark_images, axis=0)
+        if dark_images.ndim == 2:
+            return dark_images
         return dark_images
     except Exception as e:
         logger.error(f"Failed to load dark image: {e}")
@@ -154,15 +156,12 @@ def subtract_dark(images: npt.NDArray) -> npt.NDArray:
     Subtract dark background. Uses caching for performance.
     """
     config = ConfigManager.load_config()
-    dark_file = config.path.analysis_dir / "dark_images" / "dark.npy"
-
+    dark_file = config.path.save_dark_dir
     dark = _load_cached_dark_image(dark_file)
-
     if dark is None:
         return images
 
     none_negative_dark = np.maximum(dark, 0)
-
     return np.maximum(0, images - none_negative_dark[np.newaxis, :, :])
 
 

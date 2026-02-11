@@ -60,9 +60,11 @@ class ExpPaths(BaseModel):
     """
 
     log_dir: Path = Path()
-
     load_dir: Path = Path()
     analysis_dir: Path = Path()
+
+    raw_dark_dir: Path = Path()
+    save_dark_dir: Path = Path()
 
     mat_dir: Path = Path("mat_files")
     processed_dir: Path = Path("processed_data")

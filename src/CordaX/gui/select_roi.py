@@ -62,8 +62,9 @@ def auto_roi(scan_dir: str | Path, config: ExpConfig, index_mode: int | None = N
         index = len(files) // 2
     else:
         index = index_mode
-
+    
     file: Path = scan_dir / files[index]
+    
     image = get_hdf5_images(file, config).sum(axis=0)
 
     # Normalize image
