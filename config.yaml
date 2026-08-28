@@ -1,5 +1,4 @@
 runs:
-  # [171]
   [109]
 path:
   log_dir: ./logs
@@ -11,7 +10,6 @@ path:
   raw_dark_dir: X:\251131\run=171\scan=001
   # saved npz dark frame
   save_dark_dir: ${path.analysis_dir}/dark_images/dark.npy
-  # save_dark_dir: C:\Users\user\Downloads\dark.npy
 
   # load_dir: D:\data\240821_PAL_delay
   # analysis_dir: ${path.load_dir}/analysis
