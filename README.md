@@ -43,7 +43,7 @@ This project builds upon and refactors the legacy system **XFEL_data**, original
 
 ```yaml
 runs:
-  [136, 137, 143]
+  [136, 137, 143, 145]
 
 path:
   log_dir: ./logs
