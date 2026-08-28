@@ -6,8 +6,8 @@ from scipy.io import loadmat, savemat
 from scipy.ndimage import center_of_mass
 from tifffile import imwrite
 
-from CordaX.gui.roi_core import RoiSelector
-from CordaX.config import ConfigManager
+from QoraFlow.gui.roi_core import RoiSelector
+from QoraFlow.config import ConfigManager
 
 
 def shift_image(arr, dx, dy):

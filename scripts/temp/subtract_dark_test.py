@@ -1,11 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from CordaX.config import ConfigManager
-from CordaX.integrator.loader import PalXFELLoader
-from CordaX.filesystem import get_run_scan_dir
+from QoraFlow.config import ConfigManager
+from QoraFlow.integrator.loader import PalXFELLoader
+from QoraFlow.filesystem import get_run_scan_dir
 
-# ConfigManager.initialize(r"D:\Members\IsaacYong\Dev\CordaX\config.yaml")
+# ConfigManager.initialize(r"D:\Members\IsaacYong\Dev\QoraFlow\config.yaml")
 # config = ConfigManager.load_config()
 load_dir = r"X:\251128_FXS\raw_data\h5\type=raw"
 file = get_run_scan_dir(load_dir, 121, 1, sub_path="p0060.h5")

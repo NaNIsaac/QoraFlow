@@ -477,7 +477,7 @@ wheels = [
 ]
 
 [[package]]
-name = "cordax"
+name = "QoraFlow"
 version = "0.1.1"
 source = { virtual = "." }
 dependencies = [

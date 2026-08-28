@@ -229,7 +229,7 @@ def get_hdf5_images(file: str, config: ExpConfig) -> npt.NDArray:
 
 if __name__ == "__main__":
     import time
-    from CordaX.filesystem import get_run_scan_dir
+    from QoraFlow.filesystem import get_run_scan_dir
     ConfigManager.initialize("config.yaml")
     config: ExpConfig = ConfigManager.load_config()
     load_dir: Path = config.path.load_dir

@@ -7,7 +7,7 @@ from typing import Any
 
 import yaml
 
-from CordaX.config.definitions import ExpConfig
+from QoraFlow.config.definitions import ExpConfig
 
 
 class ConfigManager:

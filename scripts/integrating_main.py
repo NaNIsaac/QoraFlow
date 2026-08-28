@@ -2,15 +2,15 @@ from pathlib import Path
 
 from roi_rectangle import RoiRectangle
 
-from CordaX.config import ExpConfig, ConfigManager
-from CordaX.filesystem import get_run_scan_dir, get_scan_nums
-from CordaX.functional import pipe, identity
-from CordaX.gui.select_roi import auto_roi
-from CordaX.integrator.core import CoreIntegrator
-from CordaX.integrator.loader import PalXFELLoader
-from CordaX.integrator.saver import SaverStrategy, get_saver_strategy
-from CordaX.logger import Logger, setup_logger
-from CordaX.preprocessor.image_qbpm_preprocessor import (
+from QoraFlow.config import ExpConfig, ConfigManager
+from QoraFlow.filesystem import get_run_scan_dir, get_scan_nums
+from QoraFlow.functional import pipe, identity
+from QoraFlow.gui.select_roi import auto_roi
+from QoraFlow.integrator.core import CoreIntegrator
+from QoraFlow.integrator.loader import PalXFELLoader
+from QoraFlow.integrator.saver import SaverStrategy, get_saver_strategy
+from QoraFlow.logger import Logger, setup_logger
+from QoraFlow.preprocessor.image_qbpm_preprocessor import (
     ImagesQbpmProcessor,
     make_qbpm_roi_normalizer,
     make_thresholder,

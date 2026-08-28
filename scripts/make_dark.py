@@ -1,9 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from CordaX.config import ConfigManager
-from CordaX.integrator.loader import PalXFELLoader
-from CordaX.logger import Logger, setup_logger
+from QoraFlow.config import ConfigManager
+from QoraFlow.integrator.loader import PalXFELLoader
+from QoraFlow.logger import Logger, setup_logger
 
 logger: Logger = setup_logger()
 ConfigManager.initialize(r"config.yaml")

@@ -8,19 +8,19 @@ import numpy.typing as npt
 import tifffile
 from roi_rectangle import RoiRectangle
 
-from CordaX.analyzer.core import DataAnalyzer
-from CordaX.analyzer.draw_figure import (
+from QoraFlow.analyzer.core import DataAnalyzer
+from QoraFlow.analyzer.draw_figure import (
     draw_com_diff_figure,
     draw_com_figure,
     draw_intensity_diff_figure,
     draw_intensity_figure,
     patch_rectangle,
 )
-from CordaX.config import ConfigManager
-from CordaX.config import ExpConfig
-from CordaX.filesystem import get_run_scan_dir, make_run_scan_dir
-from CordaX.gui.roi_core import RoiSelector
-from CordaX.logger import Logger, setup_logger
+from QoraFlow.config import ConfigManager
+from QoraFlow.config import ExpConfig
+from QoraFlow.filesystem import get_run_scan_dir, make_run_scan_dir
+from QoraFlow.gui.roi_core import RoiSelector
+from QoraFlow.logger import Logger, setup_logger
 
 
 def main() -> None:

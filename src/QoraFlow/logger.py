@@ -15,7 +15,7 @@ def setup_logger(level="INFO") -> Logger:
         return logger
 
     # 1. Config 로드
-    ConfigManager.initialize(r"D:\Members\IsaacYong\Dev\CordaX\config.yaml")
+    ConfigManager.initialize(r"D:\Members\IsaacYong\Dev\QoraFlow\config.yaml")
     config = ConfigManager.load_config()
     log_dir: Path = Path(config.path.log_dir) # Path 객체 보장
 
