@@ -105,6 +105,19 @@ def normalize_images_by_qbpm(images_qbpm: ImagesQbpm) -> ImagesQbpm:
     return div_images_by_qbpm(images_qbpm[0], images_qbpm[1]), images_qbpm[1]
 
 
+def lsb_quantization(images_qbpm: ImagesQbpm) -> ImagesQbpm:
+    """
+    Apply LSB quantization to the images while keeping the Qbpm values unchanged.
+
+    Parameters:
+    - images_qbpm (tuple[Images, Qbpm]): tuple of Images and Qbpm
+
+    Returns:
+    - tuple[np.ndarray, np.ndarray]: A tuple containing the LSB-quantized images and the original Qbpm values.
+    """
+    return np.floor(images_qbpm[0] / 9.8) * 9.8, images_qbpm[1]
+
+
 def remove_outliers_using_ransac(images_qbpm: ImagesQbpm) -> ImagesQbpm:
     """
     Remove outliers from the images and Qbpm values using RANSAC regression.

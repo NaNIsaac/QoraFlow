@@ -15,6 +15,7 @@ from QoraFlow.preprocessor.image_qbpm_preprocessor import (
     make_qbpm_roi_normalizer,
     make_thresholder,
     subtract_dark_background,
+    lsb_quantization
 )
 
 
@@ -32,15 +33,14 @@ def setup_preprocessors(scan_dir: Path) -> dict[str, ImagesQbpmProcessor]:
     logger.info(f"Auto selected ROI: {roi_rect}")
     # filter_and_normalize_by_qbpm = make_qbpm_roi_normalizer(roi_rect)
 
-    threshold4: ImagesQbpmProcessor = make_thresholder(4)
     normalize_qbpm: ImagesQbpmProcessor = make_qbpm_roi_normalizer(roi_rect)
     from itertools import permutations
     
     preprocessors: dict[str, ImagesQbpmProcessor] = {}
     for r in range(1, 4):
-        for ops in permutations([threshold4, normalize_qbpm, subtract_dark_background], r):
+        for ops in permutations([lsb_quantization, normalize_qbpm, subtract_dark_background], r):
             name = "".join(
-                ["T" if op == threshold4 else "N" if op == normalize_qbpm else "D" for op in ops]
+                ["L" if op == lsb_quantization else "N" if op == normalize_qbpm else "D" for op in ops]
             )
             func = pipe(*ops)
             preprocessors[name] = func
