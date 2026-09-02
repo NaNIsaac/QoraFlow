@@ -1,14 +1,15 @@
+import sys
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import h5py
-import hdf5plugin  # pylint: disable=unused-import
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from ..config import ExpConfig, ConfigManager
+from ..config import ConfigManager, ExpConfig
 from ..config.enums import Hertz
 from ..logger import Logger, setup_logger
 
@@ -28,7 +29,6 @@ class RawDataLoader(ABC):
 
     def close(self):
         """Optional close method"""
-        pass
 
     def __enter__(self):
         return self
@@ -46,7 +46,7 @@ class PalXFELLoader(RawDataLoader):
         """
         self.file: Path = Path(file)
         if not self.file.exists():
-            raise FileNotFoundError(f"No such file: {str(self.file)}")
+            raise FileNotFoundError(f"No such file: {self.file!s}")
 
         self.logger: Logger = setup_logger()
         self.config: ExpConfig = ConfigManager.load_config()
@@ -229,6 +229,7 @@ def get_hdf5_images(file: str, config: ExpConfig) -> npt.NDArray:
 
 if __name__ == "__main__":
     import time
+
     from QoraFlow.filesystem import get_run_scan_dir
     ConfigManager.initialize("config.yaml")
     config: ExpConfig = ConfigManager.load_config()
@@ -240,7 +241,7 @@ if __name__ == "__main__":
             print(f"File not found: {file}")
     except Exception as e:
         print(f"Path Error: {e}")
-        exit()
+        sys.exit()
 
     print(f"Target: {file}")
 

@@ -4,11 +4,11 @@ import click
 import numpy as np
 from roi_rectangle import RoiRectangle
 
-from .roi_core import RoiSelector
 from ..analyzer.converter import load_npz
 from ..config import ConfigManager
 from ..filesystem import get_run_scan_dir
 from ..integrator.loader import PalXFELLoader
+from .roi_core import RoiSelector
 
 
 def load_image(run_n: int) -> np.ndarray:

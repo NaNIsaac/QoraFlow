@@ -1,5 +1,4 @@
 from functools import lru_cache
-from typing import Optional
 from pathlib import Path
 
 import numpy as np
@@ -133,7 +132,7 @@ def div_images_by_qbpm(images: npt.NDArray, qbpm: npt.NDArray) -> npt.NDArray:
     return images * qbpm.mean() / qbpm[:, np.newaxis, np.newaxis]
 
 @lru_cache(maxsize=1)
-def _load_cached_dark_image(dark_file_path: Path) -> Optional[np.ndarray]:
+def _load_cached_dark_image(dark_file_path: Path) -> np.ndarray | None:
     """
     Load dark image only ONCE and cache it in RAM.
     """

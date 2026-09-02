@@ -1,19 +1,19 @@
+import gc
 from collections import defaultdict
 from contextlib import ExitStack
 from pathlib import Path
 from typing import Any
-import gc
 
 import numpy as np
 import numpy.typing as npt
 from tqdm import tqdm
 
-from ..config import ExpConfig, ConfigManager
+from ..config import ConfigManager, ExpConfig
 from ..functional import batched
-from .loader import RawDataLoader
-from .saver import SaverStrategy
 from ..logger import Logger, setup_logger
 from ..preprocessor.image_qbpm_preprocessor import ImagesQbpmProcessor
+from .loader import RawDataLoader
+from .saver import SaverStrategy
 
 
 class CoreIntegrator:
@@ -212,12 +212,12 @@ class CoreIntegrator:
             
             stacked[proc_name]["delay"] = delays[sort_idx]
             
-            if "pon" in data_map and data_map["pon"]:
+            if data_map.get("pon"):
                 # Convert list -> array and index in sorted order
                 pon_stack = np.stack(data_map["pon"], axis=0)
                 stacked[proc_name]["pon"] = pon_stack[sort_idx]
                 
-            if "poff" in data_map and data_map["poff"]:
+            if data_map.get("poff"):
                 poff_stack = np.stack(data_map["poff"], axis=0)
                 stacked[proc_name]["poff"] = poff_stack[sort_idx]
                 

@@ -1,5 +1,5 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 from QoraFlow.config import ConfigManager
 from QoraFlow.integrator.loader import PalXFELLoader
@@ -41,7 +41,6 @@ def main():
 
     logger.info(f"File saved at {file}")
     
-    return
 
 if __name__ == "__main__":
     main()

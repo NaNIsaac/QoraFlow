@@ -5,10 +5,10 @@ import click
 import numpy as np
 from roi_rectangle import RoiRectangle
 
-from .gui.roi_core import RoiSelector
 from .analyzer.converter import load_npz
 from .config import ConfigManager
 from .filesystem import get_run_scan_dir
+from .gui.roi_core import RoiSelector
 
 
 class CliError(click.ClickException):
@@ -63,8 +63,7 @@ def process_image(
             eff_vmin = np.min(img)
         if vmax is None:
             eff_vmax = np.max(img)
-        if eff_vmin > eff_vmax:
-            eff_vmin = eff_vmax
+        eff_vmin = min(eff_vmin, eff_vmax)
 
     return np.clip(img, eff_vmin, eff_vmax)
 

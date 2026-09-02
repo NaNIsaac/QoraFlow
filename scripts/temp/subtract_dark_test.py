@@ -1,9 +1,8 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
-from QoraFlow.config import ConfigManager
-from QoraFlow.integrator.loader import PalXFELLoader
 from QoraFlow.filesystem import get_run_scan_dir
+from QoraFlow.integrator.loader import PalXFELLoader
 
 # ConfigManager.initialize(r"D:\Members\IsaacYong\Dev\QoraFlow\config.yaml")
 # config = ConfigManager.load_config()

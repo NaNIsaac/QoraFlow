@@ -1,13 +1,12 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-from scipy.io import savemat
 import tifffile
+from scipy.io import savemat
 
-from ..config import ExpConfig, ConfigManager
+from ..config import ConfigManager, ExpConfig
 from ..filesystem import make_run_scan_dir
 from ..mathematics import axis_np2mat
 
@@ -21,7 +20,7 @@ class SaverStrategy(ABC):
     """Abstract Base Class for saving data dictionaries to files."""
 
     def __init__(self) -> None:
-        self._file: Optional[Path] = None
+        self._file: Path | None = None
         self.config: ExpConfig = ConfigManager.load_config()
 
     @abstractmethod
@@ -43,7 +42,6 @@ class SaverStrategy(ABC):
     @abstractmethod
     def file_type(self) -> str:
         """Return File Type extension (e.g., 'npz')"""
-        pass
 
     def _get_formatted_comment(self, comment: str) -> str:
         """Helper to format the comment with a leading underscore if it exists."""

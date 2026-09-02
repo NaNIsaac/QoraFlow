@@ -1,7 +1,9 @@
 import sys
 from pathlib import Path
+
 from loguru import logger
 from loguru._logger import Logger
+
 from .config import ConfigManager
 
 _IS_CONFIGURED = False

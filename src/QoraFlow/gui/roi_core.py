@@ -1,6 +1,7 @@
 import os
 
 import matplotlib
+
 matplotlib.use('QtAgg')
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,7 +9,7 @@ import numpy.typing as npt
 from matplotlib import patches
 from roi_rectangle import RoiRectangle
 
-from ..config import ExpConfig, ConfigManager
+from ..config import ConfigManager, ExpConfig
 from ..filesystem import get_run_scan_dir
 from ..integrator.loader import get_hdf5_images
 
@@ -23,23 +24,22 @@ class RoiSelector:
 
     def on_mouse_press(self, event):
 
-        if event.inaxes is not None:
-            if event.button == 1:
-                self.drawing = True
-                self.ix, self.iy = int(event.xdata), int(event.ydata)
-                self.fx, self.fy = self.ix, self.iy
-                if self.rect is not None:
-                    self.rect.remove()
-                self.rect = patches.Rectangle(
-                    (self.ix, self.iy),
-                    1,
-                    1,
-                    linewidth=1,
-                    edgecolor="r",
-                    facecolor="none",
-                )
-                self.ax.add_patch(self.rect)
-                plt.draw()
+        if event.inaxes is not None and event.button == 1:
+            self.drawing = True
+            self.ix, self.iy = int(event.xdata), int(event.ydata)
+            self.fx, self.fy = self.ix, self.iy
+            if self.rect is not None:
+                self.rect.remove()
+            self.rect = patches.Rectangle(
+                (self.ix, self.iy),
+                1,
+                1,
+                linewidth=1,
+                edgecolor="r",
+                facecolor="none",
+            )
+            self.ax.add_patch(self.rect)
+            plt.draw()
 
     def on_mouse_release(self, event):
 

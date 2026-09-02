@@ -6,7 +6,6 @@ from scipy.integrate import dblquad, quad
 
 from .config import ConfigManager
 
-
 # FWHM_COEFFICIENT = 2 * np.sqrt(2 * np.log(2))
 FWHM_COEFFICIENT: Final[float] = 2.35482  
 WAVELENGTH_COEFFICIENT: Final[float] = 12.398419843320025

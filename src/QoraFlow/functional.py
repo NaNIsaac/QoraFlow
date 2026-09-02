@@ -7,6 +7,7 @@ from collections.abc import Callable
 from functools import reduce
 from itertools import islice
 
+
 def identity(*args):
     """A function that returns its input unchanged."""
     if len(args) == 1:

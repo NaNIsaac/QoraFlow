@@ -2,9 +2,9 @@ from pathlib import Path
 
 from roi_rectangle import RoiRectangle
 
-from QoraFlow.config import ExpConfig, ConfigManager
+from QoraFlow.config import ConfigManager, ExpConfig
 from QoraFlow.filesystem import get_run_scan_dir, get_scan_nums
-from QoraFlow.functional import pipe, identity
+from QoraFlow.functional import identity, pipe
 from QoraFlow.gui.select_roi import auto_roi
 from QoraFlow.integrator.core import CoreIntegrator
 from QoraFlow.integrator.loader import PalXFELLoader
@@ -12,12 +12,10 @@ from QoraFlow.integrator.saver import SaverStrategy, get_saver_strategy
 from QoraFlow.logger import Logger, setup_logger
 from QoraFlow.preprocessor.image_qbpm_preprocessor import (
     ImagesQbpmProcessor,
+    lsb_quantization,
     make_qbpm_roi_normalizer,
-    make_thresholder,
     subtract_dark_background,
-    lsb_quantization
 )
-
 
 logger: Logger = setup_logger()
 ConfigManager.initialize("config.yaml")
