@@ -34,9 +34,9 @@ def setup_preprocessors(scan_dir: Path) -> dict[str, ImagesQbpmProcessor]:
     # filter_and_normalize_by_qbpm = make_qbpm_roi_normalizer(roi_rect)
 
     normalize_qbpm: ImagesQbpmProcessor = make_qbpm_roi_normalizer(roi_rect)
-    from itertools import permutations
     
     preprocessors: dict[str, ImagesQbpmProcessor] = {}
+    # from itertools import permutations
     # for r in range(1, 4):
     #     for ops in permutations([lsb_quantization, normalize_qbpm, subtract_dark_background], r):
     #         name = "".join(
