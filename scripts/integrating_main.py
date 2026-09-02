@@ -37,13 +37,16 @@ def setup_preprocessors(scan_dir: Path) -> dict[str, ImagesQbpmProcessor]:
     from itertools import permutations
     
     preprocessors: dict[str, ImagesQbpmProcessor] = {}
-    for r in range(1, 4):
-        for ops in permutations([lsb_quantization, normalize_qbpm, subtract_dark_background], r):
-            name = "".join(
-                ["L" if op == lsb_quantization else "N" if op == normalize_qbpm else "D" for op in ops]
-            )
-            func = pipe(*ops)
-            preprocessors[name] = func
+    # for r in range(1, 4):
+    #     for ops in permutations([lsb_quantization, normalize_qbpm, subtract_dark_background], r):
+    #         name = "".join(
+    #             ["L" if op == lsb_quantization else "N" if op == normalize_qbpm else "D" for op in ops]
+    #         )
+    #         func = pipe(*ops)
+    #         preprocessors[name] = func
+
+    pipe_ops = [lsb_quantization, normalize_qbpm, subtract_dark_background]
+    preprocessors["LND"] = pipe(*pipe_ops)
     preprocessors["raw"] = identity
     return preprocessors
 
