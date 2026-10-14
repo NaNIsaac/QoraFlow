@@ -26,7 +26,7 @@ This project builds upon and refactors the legacy system **XFEL_data**, original
 
 1. **Clone the repository:**
     ```bash
-    git clone https://github.com/SJB7777/QoraFlow.git
+    git clone https://github.com/NaNIsaac/QoraFlow.git
     cd QoraFlow
     ```
 
