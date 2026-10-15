@@ -1,8 +1,9 @@
 [project]
 name = "qoraflow"
 version = "0.1.1"
-description = "Add your description here"
+description = "Data-processing toolkit for time-resolved ultrafast X-ray experiments at PAL-XFEL"
 readme = "README.md"
+authors = [{ name = "Isaac Yong", email = "isaacyong@naver.com" }]
 requires-python = ">=3.11"
 dependencies = [
     'PyYAML',
@@ -28,6 +29,10 @@ dependencies = [
     'tqdm',
     'tuna',
 ]
+
+[project.urls]
+Homepage = "https://github.com/NaNIsaac/QoraFlow"
+Repository = "https://github.com/NaNIsaac/QoraFlow"
 
 [dependency-groups]
 dev = [

@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "QoraFlow: Data-processing toolkit for time-resolved ultrafast X-ray experiments at PAL-XFEL"
+authors:
+  - family-names: Yong
+    given-names: Isaac
+    email: isaacyong@naver.com
+    affiliation: "Sogang University"
+repository-code: "https://github.com/NaNIsaac/QoraFlow"
+abstract: "Toolkit for handling time-resolved ultrafast X-ray free-electron laser (XFEL) data, tailored to data from the Pohang Accelerator Laboratory (PAL-XFEL). It builds on and refactors the legacy XFEL_data codebase by Kim Jooheun."
+keywords:
+  - "XFEL"
+  - "PAL-XFEL"
+  - "time-resolved"
+  - "ultrafast"
+  - "X-ray diffraction"
+  - "data processing"
+license: MIT
+version: "0.1.1"
+date-released: "2026-10-14"
