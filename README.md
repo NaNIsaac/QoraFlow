@@ -1,137 +1,90 @@
 # QoraFlow
 
-> Connecting Beams, Reshaping Diffraction.
+Python scripts and a small library for reducing time-resolved pump-probe X-ray diffraction data from PAL-XFEL (JUNGFRAU detector images and QBPM intensity monitor, stored as HDF5).
 
-QoraFlow aims to be a general-purpose toolkit for handling complex scientific data, built on the principle of "connecting" disparate datasets to "reshape" them into meaningful insights.
+QoraFlow reads raw run/scan HDF5 files, splits shots into laser-on and laser-off, applies preprocessing (dark subtraction, QBPM normalization, LSB quantization), averages images per delay and writes the result as `.npz` and `.mat` files. A second script measures ROI intensity and center of mass as a function of delay and saves figures, TIFF stacks and a CSV.
 
-At present, our development is centered on providing a high-performance solution for time-resolved ultrafast experiments at X-ray Free-Electron Lasers (XFELs). The toolkit is especially tailored for data generated at the **Pohang Accelerator Laboratory (PAL-XFEL)**.
+It is research code used in our group; interfaces change without notice.
 
-# Project Heritage: Legacy System Attribution
-## Legacy Codebase Origin
+## Install
 
-This project builds upon and refactors the legacy system **XFEL_data**, originally developed by:
-- Name: Kim Jooheun
-- GitHub: @paulpeterkim
-- Role: Lead Developer & System Architect
-- Active Years: 2021–2023
-- Contact: paulpeterkim@gmail.com
----
-# Usage
-## Prerequisites
+Requires Python 3.11-3.13 (`tables` has no wheels for 3.14 yet) and [uv](https://docs.astral.sh/uv/).
 
-- [Anaconda](https://www.anaconda.com/products/distribution) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) installed
-- [Git](https://git-scm.com/) installed
+```bash
+git clone https://github.com/NaNIsaac/QoraFlow.git
+cd QoraFlow
+uv sync --python 3.13
+```
 
-## Setting Up the Environment
+The package is not installed into the environment, so run the scripts with `src` on the path (shown below).
 
-1. **Clone the repository:**
-    ```bash
-    git clone https://github.com/NaNIsaac/QoraFlow.git
-    cd QoraFlow
-    ```
+## Usage
 
-2. **Create the virtual environment:**
-    ```bash
-    conda create -n QoraFlow python=3.13
-    conda activate QoraFlow
-    pip install -r requirements.txt
-    ```
-
-## Configuration Setup
-
-1. Create a `config.yaml` file in your project root directory with the following content:
+Edit `config.yaml` in the repository root. The main fields:
 
 ```yaml
-runs:
-  [136, 137, 143, 145]
-
+runs: [109]
 path:
   log_dir: ./logs
-
-  load_dir: path\of\raw\data
-  analysis_dir: path\of\analysis\result
-
-  output_dir: ${path.analysis_dir}\output_data
-  mat_dir: ${path.analysis_dir}\mat_files
-  processed_dir: ${path.analysis_dir}\processed_data
-
+  load_dir: /path/to/raw_data/h5/type=raw   # contains run=XXX/scan=YYY/p*.h5
+  analysis_dir: /path/to/analysis
+  raw_dark_dir: /path/to/dark/run=171/scan=001
+  save_dark_dir: ${path.analysis_dir}/dark_images/dark.npy
+  output_dir: ${path.analysis_dir}/output_data
+  mat_dir: ${path.analysis_dir}/mat_files
+  processed_dir: ${path.analysis_dir}/processed_data
 param:
-  pump_setting: 15HZ
+  merge_num: 7          # HDF5 files (repeats) merged per dataset
+  chunk_size: 100
+  pump_setting: 60HZ
   hutch: eh1
   detector: jungfrau2
   xray: HX
-  y1: 0
-  y2: 1
-  x1: 2
-  x2: 3
-  sdd: 1.3
-  dps: 7.5e-05
-  beam_energy: 9.7
+  sdd: 1.3              # sample-detector distance [m]
+  dps: 7.5e-05          # detector pixel size [m]
+  beam_energy: 9        # keV
 ```
 
-2. Modify the following paths according to your system setup:
-   - `load_dir`: Path to raw HDF5 data files
-   - `analysis_dir`: Root directory for analysis outputs
-   - Adjust other paths as needed while maintaining the directory structure
-
-## Integrating
-Run the integrating script with:
+`${path.x}` placeholders are resolved when the config is loaded. Then, from the repository root:
 
 ```bash
-python integrating_main.py
+export PYTHONPATH=src
+uv run python scripts/make_dark.py          # average dark frames -> save_dark_dir
+uv run python scripts/integrating_main.py   # raw HDF5 -> processed .npz / .mat
+uv run python scripts/analyzing_main.py     # ROI intensity and COM vs delay
 ```
 
-The script will:
-1. Read configuration from `config.yaml`
-2. Process specified runs (136, 137, 143)
-3. Use detector parameters from the configuration
-4. Save outputs in the specified directory structure
-5. Store logs in `./logs`
+The raw files follow the PAL-XFEL layout:
 
-## Analyzing
-```bash
-python analyzing_main.py
 ```
-
-## Important Parameters
-- `runs`: list of run numbers to process
-- `detector`: Detector configuration (jungfrau2)
-- `beam_energy`: X-ray beam energy in keV
-- `sdd`: Sample-to-detector distance in meters
-- Path configurations for input/output directories
-
-Note: Ensure all path locations are accessible and have proper read/write permissions before running the script.
-
----
-# Project Overview
-The **PAL-XFEL Data Handling Toolkit** is a specialized suite of tools developed for the efficient processing and analysis of PAL-XFEL data, with a focus on time-resolved ultrafast experiments studying polaronic lattice distortions in Strontium Titanate (STO) nanocrystals. This toolkit is designed to enhance data handling, reduce processing times, and ensure the integrity of analytical results, making it an essential asset for our research on perovskite-oxide materials.
-
-## File Structure of Raw Data
-```bash
 p0110.h5
-├── detector
-│   └── eh1
-│      └── jungfrau2
-│         └── image
+├── detector/eh1/jungfrau2/image
 ├── metadata
-├── oxc
-├── pd
-├── qbpm
-│   └── eh1
-│      └── qbpm1
-└── oh
+├── qbpm/eh1/qbpm1
+├── oh, oxc, pd
 ```
 
-## Goals
-- **Efficient Data Management**: Utilize HDF5 for structured storage and rapid data access, tailored for time-resolved datasets.
-- **Accelerated Data Processing**: Implement parallel processing techniques to speed up I/O operations, critical for handling the rapid sequence of ultrafast experiments.
-- **Data Quality Assurance**: Apply preprocessing methods to clean and standardize data for reliable analysis, ensuring precision in time-resolved measurements.
-- **Automated Workflows**: Develop Python scripts to automate the data processing pipeline, from raw data to analytical outputs, streamlining the analysis of complex ultrafast phenomena.
+## Structure
 
-## Future Enhancements
-- **Scalability**: Continue to optimize the toolkit to handle increasing data volumes, ensuring it remains effective as experimental datasets grow.
-- **Adaptability**: Ensure the tools can be adapted to various research needs, particularly those involving new time-resolved ultrafast techniques.
-- **Collaboration**: Share insights and tools within our research community to foster collective progress in the field of ultrafast science.
+```
+src/QoraFlow/
+  integrator/     HDF5 loader (PalXFELLoader), integration, npz/mat savers
+  preprocessor/   dark subtraction, QBPM normalization, LSB quantization
+  analyzer/       ROI intensity / center-of-mass analysis and figures
+  gui/            Qt ROI selector
+  config/         YAML config with pydantic validation
+scripts/          entry-point scripts (run from repo root)
+notebooks/        exploratory analysis notebooks
+```
 
-## Getting Involved
-This toolkit is primarily for internal use within our research group, but we welcome feedback and suggestions from our colleagues. Please reach out if you have ideas or wish to contribute to our ongoing development.
+## Credits
+
+QoraFlow is a refactor of the earlier XFEL_data codebase written by Kim Jooheun ([@paulpeterkim](https://github.com/paulpeterkim)), 2021-2023.
+
+## Citation
+
+See [CITATION.cff](CITATION.cff).
+
+## License
+
+MIT, see [LICENSE.md](LICENSE.md).
