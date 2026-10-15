@@ -43,6 +43,10 @@ param:
   sdd: 1.3              # sample-detector distance [m]
   dps: 7.5e-05          # detector pixel size [m]
   beam_energy: 9        # keV
+  x1: 0                 # ROI (pixels) used by analyzing_main.py
+  x2: 1
+  y1: 2
+  y2: 3
 ```
 
 `${path.x}` placeholders are resolved when the config is loaded. Then, from the repository root:
@@ -64,6 +68,13 @@ p0110.h5
 ├── oh, oxc, pd
 ```
 
+To pick an ROI interactively (Qt window; `--roi` prints the selected rectangle):
+
+```bash
+uv run python -m QoraFlow.gui processed 109 --roi --log        # from processed .npz
+uv run python -m QoraFlow.gui raw 109 1 110 --roi --vmax 500   # from raw run/scan/p-file
+```
+
 ## Structure
 
 ```
@@ -73,6 +84,7 @@ src/QoraFlow/
   analyzer/       ROI intensity / center-of-mass analysis and figures
   gui/            Qt ROI selector
   config/         YAML config with pydantic validation
+  datacheck/      raw-file size checks and MAD outlier detection
 scripts/          entry-point scripts (run from repo root)
 notebooks/        exploratory analysis notebooks
 ```
