@@ -16,8 +16,9 @@ def setup_logger(level="INFO") -> Logger:
     if _IS_CONFIGURED:
         return logger
 
-    # 1. Config 로드
-    ConfigManager.initialize(r"D:\Members\IsaacYong\Dev\QoraFlow\config.yaml")
+    # 1. Config 로드 (아직 초기화 전이면 실행 위치의 config.yaml)
+    if ConfigManager._config_file is None:
+        ConfigManager.initialize("config.yaml")
     config = ConfigManager.load_config()
     log_dir: Path = Path(config.path.log_dir) # Path 객체 보장
 
