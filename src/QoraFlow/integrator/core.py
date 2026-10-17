@@ -65,20 +65,20 @@ class CoreIntegrator:
         desc = f"Processing {scan_dir.name} (bundles={self.merge_num})"
 
         pbar = tqdm(batches, desc=desc, unit="group")
+        loaded_batches = 0
 
         for h5_batch in pbar:
-            h5_batch_dirs = [scan_dir / file for file in h5_batch]
-
             # Load all of the data in one batch
             with ExitStack() as stack:
                 try:
                     loaders = [
-                        stack.enter_context(self.LoaderStrategy(h5_dir)) 
-                        for h5_dir in h5_batch_dirs
+                        stack.enter_context(self.LoaderStrategy(h5_file))
+                        for h5_file in h5_batch
                     ]
                 except Exception as e:
                     self.logger.warning(f"Skipping batch due to load error: {e}")
                     continue
+                loaded_batches += 1
                 
                 # Return variables: { 'proc_name': { 'pon': 2D_Avg_Img, 'delay': Scalar } }
                 # [OOM Critical Point 1] Large raw data is processed here
@@ -99,7 +99,10 @@ class CoreIntegrator:
             # 5. Memory release (Very Important: delete several GB of Raw data)
             del batch_averaged_data
             gc.collect()
-            
+
+        if batches and not loaded_batches:
+            raise RuntimeError(f"Every batch in {scan_dir} failed to load")
+
         self.logger.info(f"Completed processing: {scan_dir}")
 
         # [Final] Convert list -> Numpy Stack
