@@ -53,7 +53,7 @@ class CoreIntegrator:
         scan_dir = Path(scan_dir)
         self.logger.info(f"Starting scan integration for: {scan_dir}")
 
-        # Structure: { 'preprocessor_name': { 'pon': [avg_img1, avg_img2...], 'delay': [t1, t2...] } }
+        # Structure: { 'preprocessor_name': { 'pon': [(t1, avg_img1), ...], 'poff': [(t1, avg_img1), ...] } }
         final_results_list: dict[str, dict[str, list[Any]]] = defaultdict(lambda: defaultdict(list))
         
         hdf5_files: list[Path] = sorted(
@@ -65,20 +65,20 @@ class CoreIntegrator:
         desc = f"Processing {scan_dir.name} (bundles={self.merge_num})"
 
         pbar = tqdm(batches, desc=desc, unit="group")
+        loaded_batches = 0
 
         for h5_batch in pbar:
-            h5_batch_dirs = [scan_dir / file for file in h5_batch]
-
             # Load all of the data in one batch
             with ExitStack() as stack:
                 try:
                     loaders = [
-                        stack.enter_context(self.LoaderStrategy(h5_dir)) 
-                        for h5_dir in h5_batch_dirs
+                        stack.enter_context(self.LoaderStrategy(h5_file))
+                        for h5_file in h5_batch
                     ]
                 except Exception as e:
                     self.logger.warning(f"Skipping batch due to load error: {e}")
                     continue
+                loaded_batches += 1
                 
                 # Return variables: { 'proc_name': { 'pon': 2D_Avg_Img, 'delay': Scalar } }
                 # [OOM Critical Point 1] Large raw data is processed here
@@ -88,18 +88,20 @@ class CoreIntegrator:
                 for proc_name, data_map in batch_averaged_data.items():
                     # There might be multiple results per delay (usually 1)
                     for delay_key, result_content in data_map.items():
-                        if "pon" in result_content:
-                            final_results_list[proc_name]["pon"].append(result_content["pon"])
-                        if "poff" in result_content:
-                            final_results_list[proc_name]["poff"].append(result_content["poff"])
-                        
-                        # Store delay information
-                        final_results_list[proc_name]["delay"].append(delay_key)
+                        # Keep each image paired with its own delay; pump states can be missing per batch
+                        for state in ("pon", "poff"):
+                            if state in result_content:
+                                final_results_list[proc_name][state].append(
+                                    (delay_key, result_content[state])
+                                )
 
             # 5. Memory release (Very Important: delete several GB of Raw data)
             del batch_averaged_data
             gc.collect()
-            
+
+        if batches and not loaded_batches:
+            raise RuntimeError(f"Every batch in {scan_dir} failed to load")
+
         self.logger.info(f"Completed processing: {scan_dir}")
 
         # [Final] Convert list -> Numpy Stack
@@ -116,6 +118,10 @@ class CoreIntegrator:
         [Corrected]
         Incrementally processes chunks from loaders and accumulates sums.
         Memory usage remains low regardless of total file size.
+
+        Frames are grouped per (preprocessor, delay). Delays that agree to
+        6 decimal places are treated as the same nominal delay, so a merge
+        batch spanning several delays yields one averaged image per delay.
         """
         # 1. 누적기 초기화
         accumulators = defaultdict(lambda: {
@@ -135,7 +141,7 @@ class CoreIntegrator:
                 
                 # 전처리기별 수행
                 for name, preprocessor in self.preprocessor.items():
-                    acc = accumulators[name]
+                    acc = accumulators[(name, round(current_delay, 6))]
                     acc["delays"].append(current_delay)
 
                     # --- Pump On ---
@@ -179,7 +185,7 @@ class CoreIntegrator:
         # 누적된 합계(Sum)를 개수(Count)로 나눠서 평균 이미지 생성
         batch_output = defaultdict(dict)
 
-        for name, acc in accumulators.items():
+        for (name, _), acc in accumulators.items():
             if not acc["delays"]:
                 continue
             
@@ -200,27 +206,35 @@ class CoreIntegrator:
         return batch_output
 
     def _stack_results(self, results_list: dict) -> dict:
-        """Convert 2D images collected in list to 3D stack in chronological order."""
+        """
+        Convert (delay, image) pairs to delay-sorted 3D stacks per pump state.
+
+        Uses a shared 'delay' key when pon and poff cover the same delays,
+        otherwise 'pon_delay' and 'poff_delay'.
+        """
         stacked = {}
         for proc_name, data_map in results_list.items():
             stacked[proc_name] = {}
-            
-            # Group data to sort by Delay (Delay, Index)
-            delays = np.array(data_map["delay"])
-            # Create sort index
-            sort_idx = np.argsort(delays)
-            
-            stacked[proc_name]["delay"] = delays[sort_idx]
-            
-            if data_map.get("pon"):
-                # Convert list -> array and index in sorted order
-                pon_stack = np.stack(data_map["pon"], axis=0)
-                stacked[proc_name]["pon"] = pon_stack[sort_idx]
-                
-            if data_map.get("poff"):
-                poff_stack = np.stack(data_map["poff"], axis=0)
-                stacked[proc_name]["poff"] = poff_stack[sort_idx]
-                
+            state_delays = {}
+
+            for state in ("pon", "poff"):
+                pairs = sorted(data_map.get(state, []), key=lambda pair: pair[0])
+                if not pairs:
+                    continue
+                delays, images = zip(*pairs)
+                state_delays[state] = np.array(delays)
+                stacked[proc_name][state] = np.stack(images, axis=0)
+
+            match list(state_delays.values()):
+                case [delays]:
+                    stacked[proc_name]["delay"] = delays
+                case [pon_delays, poff_delays] if np.array_equal(pon_delays, poff_delays):
+                    stacked[proc_name]["delay"] = pon_delays
+                case _:
+                    self.logger.warning(f"{proc_name}: pon and poff delays differ")
+                    for state, delays in state_delays.items():
+                        stacked[proc_name][f"{state}_delay"] = delays
+
         return stacked
 
     @property

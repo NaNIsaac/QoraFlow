@@ -37,5 +37,10 @@ Repository = "https://github.com/NaNIsaac/QoraFlow"
 [dependency-groups]
 dev = [
     "memory-profiler",
+    "pytest",
     "ruff",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
