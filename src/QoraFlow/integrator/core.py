@@ -118,6 +118,10 @@ class CoreIntegrator:
         [Corrected]
         Incrementally processes chunks from loaders and accumulates sums.
         Memory usage remains low regardless of total file size.
+
+        Frames are grouped per (preprocessor, delay). Delays that agree to
+        6 decimal places are treated as the same nominal delay, so a merge
+        batch spanning several delays yields one averaged image per delay.
         """
         # 1. 누적기 초기화
         accumulators = defaultdict(lambda: {
@@ -137,7 +141,7 @@ class CoreIntegrator:
                 
                 # 전처리기별 수행
                 for name, preprocessor in self.preprocessor.items():
-                    acc = accumulators[name]
+                    acc = accumulators[(name, round(current_delay, 6))]
                     acc["delays"].append(current_delay)
 
                     # --- Pump On ---
@@ -181,7 +185,7 @@ class CoreIntegrator:
         # 누적된 합계(Sum)를 개수(Count)로 나눠서 평균 이미지 생성
         batch_output = defaultdict(dict)
 
-        for name, acc in accumulators.items():
+        for (name, _), acc in accumulators.items():
             if not acc["delays"]:
                 continue
             

@@ -79,3 +79,13 @@ def test_pump_states_keep_own_delays(tmp_path, specs, expected):
             np.testing.assert_array_equal(result[key][:, 0, 0], delays)
         else:
             np.testing.assert_array_equal(result[key], delays)
+
+
+def test_merge_batch_groups_by_delay(tmp_path):
+    scan_dir = tmp_path / "scan"
+    write_scan(scan_dir, ["1.0 pon", "1.0000000001 pon", "2.0 pon"])
+
+    result = CoreIntegrator(FakeLoader, merge_num=3).run(scan_dir)["no_processing"]
+
+    np.testing.assert_array_equal(result["delay"], [1.0, 2.0])
+    np.testing.assert_allclose(result["pon"][:, 0, 0], [1.0, 2.0])
