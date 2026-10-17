@@ -1,5 +1,36 @@
 # QoraFlow
 
+[![Python 3.11-3.13](https://img.shields.io/badge/python-3.11--3.13-blue)](https://github.com/NaNIsaac/QoraFlow/blob/main/pyproject.toml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/NaNIsaac/QoraFlow/blob/main/LICENSE.md)
+
+**Reduce PAL-XFEL pump-probe X-ray diffraction runs to laser-on/off images per delay, then to ROI intensity and peak shift vs delay.**
+
+![Synthetic scan reduced by QoraFlow: averaged laser-off image with ROI, on minus off difference, ROI intensity and centre of mass vs delay](https://raw.githubusercontent.com/NaNIsaac/QoraFlow/main/docs/pipeline_example.png)
+
+The data here are **synthetic**: 15 delays (-2 to 10 ps) × 2 repeat files × 100
+shots of a 96×128 detector, written in the PAL-XFEL HDF5 layout the loader
+reads. Simulated: one Gaussian Bragg peak, Poisson photon noise, a per-pixel
+dark pedestal with read noise, shot-to-shot QBPM fluctuations that scale the
+signal, alternating laser on/off shots, and for laser-on shots after t=0 a 25%
+intensity drop (1.5 ps) and a 1.5-pixel peak shift (3 ps). Everything after
+that is QoraFlow's own code, unchanged: `scripts/make_dark.py`,
+`scripts/integrating_main.py` (auto ROI, LSB quantization, QBPM normalization,
+dark subtraction, merge of the 2 repeats, per-delay averaging; `LND` output)
+and `DataAnalyzer.analyze_by_roi`. Regenerate with
+`PYTHONPATH=src uv run python examples/readme_figure.py`; all data go to a
+temporary directory.
+
+## Quick start
+
+```bash
+git clone https://github.com/NaNIsaac/QoraFlow.git
+cd QoraFlow
+uv sync --python 3.13
+# point config.yaml at your raw data, then
+export PYTHONPATH=src
+uv run python scripts/make_dark.py
+uv run python scripts/integrating_main.py
+```
+
 Python scripts and a small library for reducing time-resolved pump-probe X-ray diffraction data from PAL-XFEL (JUNGFRAU detector images and QBPM intensity monitor, stored as HDF5).
 
 QoraFlow reads raw run/scan HDF5 files, splits shots into laser-on and laser-off, applies preprocessing (dark subtraction, QBPM normalization, LSB quantization), averages images per delay and writes the result as `.npz` and `.mat` files. A second script measures ROI intensity and center of mass as a function of delay and saves figures, TIFF stacks and a CSV.
@@ -16,7 +47,7 @@ cd QoraFlow
 uv sync --python 3.13
 ```
 
-The package is not installed into the environment, so run the scripts with `src` on the path (shown below).
+The package is not installed into the environment, so run the scripts with `src` on the path (shown below). Tests: `uv run pytest`.
 
 ## Usage
 
@@ -53,10 +84,22 @@ param:
 
 ```bash
 export PYTHONPATH=src
-uv run python scripts/make_dark.py          # average dark frames -> save_dark_dir
+uv run python scripts/make_dark.py          # stack dark frames -> save_dark_dir (averaged when subtracted)
 uv run python scripts/integrating_main.py   # raw HDF5 -> processed .npz / .mat
 uv run python scripts/analyzing_main.py     # ROI intensity and COM vs delay
 ```
+
+`integrating_main.py` writes one file per preprocessor to
+`processed_dir/run=XXX/scan=YYY/`: `run=XXXX_scan=YYYY_LND.npz` (LSB
+quantization, QBPM normalization, dark subtraction) and `..._raw.npz`, each with
+`pon`, `poff` and `delay` arrays (`pon_delay`/`poff_delay` if the two differ),
+plus `.mat` files per array in `mat_dir`. The QBPM-normalization ROI is picked
+automatically around the brightest region of the middle file.
+
+`analyzing_main.py` opens a Qt window to select the ROI and reads scan 1 only,
+from a file with the suffix set in the script (`suffix = "standard"`, i.e.
+`run=XXXX_scan=0001_standard.npz`); set it to `LND` or `raw` to read what
+`integrating_main.py` writes.
 
 The raw files follow the PAL-XFEL layout:
 
@@ -68,10 +111,17 @@ p0110.h5
 ├── oh, oxc, pd
 ```
 
+`PalXFELLoader` reads the frames from `image/block0_values` and their
+timestamps from `image/block0_items`, sums `qbpm1/waveforms.ch1..4/block0_values`
+per shot, and takes `metadata` (a pandas table indexed by timestamp) for the
+laser-on flag `timestamp_info.RATE_<xray>_<pump_setting>` and the delay
+(`th_value`, else `delay_value`; one delay per file). Shots are matched across
+the three by timestamp.
+
 To pick an ROI interactively (Qt window; `--roi` prints the selected rectangle):
 
 ```bash
-uv run python -m QoraFlow.gui processed 109 --roi --log        # from processed .npz
+uv run python -m QoraFlow.gui processed 109 --roi --log        # from run=0109_scan=0001.npz (no suffix)
 uv run python -m QoraFlow.gui raw 109 1 110 --roi --vmax 500   # from raw run/scan/p-file
 ```
 
@@ -87,6 +137,7 @@ src/QoraFlow/
   datacheck/      raw-file size checks and MAD outlier detection
 scripts/          entry-point scripts (run from repo root)
 notebooks/        exploratory analysis notebooks
+examples/         README figure generator (synthetic data)
 ```
 
 ## Credits
