@@ -18,13 +18,13 @@ class CliError(click.ClickException):
         super().__init__(message)
 
 
-def load_image(run_n: int, scan_n: int) -> np.ndarray:
+def load_image(run_n: int, scan_n: int, suffix: str = "LND") -> np.ndarray:
     """Loads image data for a specific run and scan."""
     config = ConfigManager.load_config()
     processed_dir = config.path.processed_dir
 
     npz_file: Path = get_run_scan_dir(
-        processed_dir, run_n, scan_n, sub_path=f"run={run_n:04}_scan={scan_n:04}.npz"
+        processed_dir, run_n, scan_n, sub_path=f"run={run_n:04}_scan={scan_n:04}_{suffix}.npz"
     )
 
     if not npz_file.exists():

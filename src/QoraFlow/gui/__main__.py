@@ -11,7 +11,7 @@ from ..integrator.loader import PalXFELLoader
 from .roi_core import RoiSelector
 
 
-def load_image(run_n: int) -> np.ndarray:
+def load_image(run_n: int, suffix: str = "LND") -> np.ndarray:
     """Load image data from npz file."""
     config = ConfigManager.load_config()
     scan_n: int = 1
@@ -19,7 +19,7 @@ def load_image(run_n: int) -> np.ndarray:
         config.path.processed_dir,
         run_n,
         scan_n,
-        sub_path=f"run={run_n:04}_scan={scan_n:04}.npz",
+        sub_path=f"run={run_n:04}_scan={scan_n:04}_{suffix}.npz",
     )
 
     # Check if the file exists
@@ -67,7 +67,9 @@ def main() -> None:
 @click.option(
     "--vmax", type=float, default=np.inf, help="Maximum value for image clipping."
 )
-def processed(run_n: int, roi: bool, log: bool, vmin: float, vmax: float) -> None:
+@click.option("--suffix", default="LND", show_default=True,
+              help="Preprocessor suffix of the npz written by integrating_main.py (LND or raw).")
+def processed(run_n: int, roi: bool, log: bool, vmin: float, vmax: float, suffix: str) -> None:
     """
     Command-line interface to process and optionally display ROI of an image.
 
@@ -78,7 +80,7 @@ def processed(run_n: int, roi: bool, log: bool, vmin: float, vmax: float) -> Non
         vmin (float): Minimum value for image clipping.
         vmax (float): Maximum value for image clipping.
     """
-    image = load_image(run_n)
+    image = load_image(run_n, suffix)
     processed_image = process_image(image, log, vmin, vmax)
 
     if roi:

@@ -97,9 +97,8 @@ plus `.mat` files per array in `mat_dir`. The QBPM-normalization ROI is picked
 automatically around the brightest region of the middle file.
 
 `analyzing_main.py` opens a Qt window to select the ROI and reads scan 1 only,
-from a file with the suffix set in the script (`suffix = "standard"`, i.e.
-`run=XXXX_scan=0001_standard.npz`); set it to `LND` or `raw` to read what
-`integrating_main.py` writes.
+from `run=XXXX_scan=0001_LND.npz` (change `suffix` in the script to `raw` for
+the unprocessed images).
 
 The raw files follow the PAL-XFEL layout:
 
@@ -121,7 +120,7 @@ the three by timestamp.
 To pick an ROI interactively (Qt window; `--roi` prints the selected rectangle):
 
 ```bash
-uv run python -m QoraFlow.gui processed 109 --roi --log        # from run=0109_scan=0001.npz (no suffix)
+uv run python -m QoraFlow.gui processed 109 --roi --log        # from run=0109_scan=0001_LND.npz (--suffix raw)
 uv run python -m QoraFlow.gui raw 109 1 110 --roi --vmax 500   # from raw run/scan/p-file
 ```
 
