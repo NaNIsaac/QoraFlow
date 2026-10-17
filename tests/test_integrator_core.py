@@ -53,3 +53,29 @@ def test_all_batches_fail_raises(tmp_path):
 
     with pytest.raises(RuntimeError, match="failed to load"):
         CoreIntegrator(FakeLoader).run(scan_dir)
+
+
+@pytest.mark.parametrize(
+    ("specs", "expected"),
+    [
+        (["2.0 pon", "1.0 pon"], {"pon": [1.0, 2.0], "delay": [1.0, 2.0]}),
+        (["2.0 poff", "1.0 poff"], {"poff": [1.0, 2.0], "delay": [1.0, 2.0]}),
+        (
+            ["3.0 pon poff", "1.0 poff", "2.0 pon"],
+            {"pon": [2.0, 3.0], "poff": [1.0, 3.0], "pon_delay": [2.0, 3.0], "poff_delay": [1.0, 3.0]},
+        ),
+    ],
+)
+def test_pump_states_keep_own_delays(tmp_path, specs, expected):
+    scan_dir = tmp_path / "scan"
+    write_scan(scan_dir, specs)
+
+    result = CoreIntegrator(FakeLoader).run(scan_dir)["no_processing"]
+
+    assert result.keys() == expected.keys()
+    for key, delays in expected.items():
+        if key in ("pon", "poff"):
+            # FakeLoader fills each image with its delay, so pairing is visible in the pixels
+            np.testing.assert_array_equal(result[key][:, 0, 0], delays)
+        else:
+            np.testing.assert_array_equal(result[key], delays)
