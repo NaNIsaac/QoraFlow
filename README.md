@@ -4,42 +4,24 @@
 
 **Reduce PAL-XFEL pump-probe X-ray diffraction runs to laser-on/off images per delay, then to ROI intensity and peak shift vs delay.**
 
+QoraFlow is for pump-probe experiments at PAL-XFEL: a laser pumps the sample, an
+X-ray pulse probes it after a set delay, and the JUNGFRAU detector images, QBPM
+intensity-monitor readings and laser on/off flags end up in HDF5 files. It reads
+those raw run/scan files, splits shots into laser-on and laser-off, applies dark
+subtraction, QBPM normalization and LSB quantization, averages images per delay
+and writes `.npz` and `.mat` files. A second script measures ROI intensity and
+center of mass as a function of delay and saves figures, TIFF stacks and a CSV.
+
 ![Synthetic scan reduced by QoraFlow: averaged laser-off image with ROI, on minus off difference, ROI intensity and centre of mass vs delay](https://raw.githubusercontent.com/NaNIsaac/QoraFlow/main/docs/pipeline_example.png)
 
-The data here are **synthetic**: 15 delays (-2 to 10 ps) × 2 repeat files × 100
-shots of a 96×128 detector, written in the PAL-XFEL HDF5 layout the loader
-reads. Simulated: one Gaussian Bragg peak, Poisson photon noise, a per-pixel
-dark pedestal with read noise, shot-to-shot QBPM fluctuations that scale the
-signal, alternating laser on/off shots, and for laser-on shots after t=0 a 25%
-intensity drop (1.5 ps) and a 1.5-pixel peak shift (3 ps). Everything after
-that is QoraFlow's own code, unchanged: `scripts/make_dark.py`,
-`scripts/integrating_main.py` (auto ROI, LSB quantization, QBPM normalization,
-dark subtraction, merge of the 2 repeats, per-delay averaging; `LND` output)
-and `DataAnalyzer.analyze_by_roi`. Regenerate with
-`PYTHONPATH=src uv run python examples/readme_figure.py`; all data go to a
-temporary directory.
-
-## Quick start
-
-```bash
-git clone https://github.com/NaNIsaac/QoraFlow.git
-cd QoraFlow
-uv sync --python 3.13
-# point config.yaml at your raw data, then
-export PYTHONPATH=src
-uv run python scripts/make_dark.py
-uv run python scripts/integrating_main.py
-```
-
-Python scripts and a small library for reducing time-resolved pump-probe X-ray diffraction data from PAL-XFEL (JUNGFRAU detector images and QBPM intensity monitor, stored as HDF5).
-
-QoraFlow reads raw run/scan HDF5 files, splits shots into laser-on and laser-off, applies preprocessing (dark subtraction, QBPM normalization, LSB quantization), averages images per delay and writes the result as `.npz` and `.mat` files. A second script measures ROI intensity and center of mass as a function of delay and saves figures, TIFF stacks and a CSV.
-
-It is research code used in our group; interfaces change without notice.
+A **synthetic** scan (15 delays, one Gaussian Bragg peak with Poisson noise, dark
+pedestal and QBPM fluctuations; laser-on shots after t=0 lose 25% intensity and
+shift 1.5 pixels) reduced by `scripts/make_dark.py`, `scripts/integrating_main.py`
+and `DataAnalyzer.analyze_by_roi`. Script: `examples/readme_figure.py`.
 
 ## Install
 
-Requires Python 3.11-3.13 (`tables` has no wheels for 3.14 yet) and [uv](https://docs.astral.sh/uv/).
+Requires Python 3.11-3.13 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone https://github.com/NaNIsaac/QoraFlow.git
@@ -47,7 +29,7 @@ cd QoraFlow
 uv sync --python 3.13
 ```
 
-The package is not installed into the environment, so run the scripts with `src` on the path (shown below). Tests: `uv run pytest`.
+Run the scripts from the repository root with `src` on the path (shown below). Tests: `uv run pytest`.
 
 ## Usage
 
