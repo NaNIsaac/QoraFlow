@@ -1,6 +1,6 @@
 # QoraFlow
 
-[![Python 3.11-3.13](https://img.shields.io/badge/python-3.11--3.13-blue)](https://github.com/NaNIsaac/QoraFlow/blob/main/pyproject.toml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/NaNIsaac/QoraFlow/blob/main/LICENSE.md)
+[![Tests](https://github.com/NaNIsaac/QoraFlow/actions/workflows/tests.yml/badge.svg)](https://github.com/NaNIsaac/QoraFlow/actions/workflows/tests.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.md)
 
 **Reduce PAL-XFEL pump-probe X-ray diffraction runs to laser-on/off images per delay, then to ROI intensity and peak shift vs delay.**
 
