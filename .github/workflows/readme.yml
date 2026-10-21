@@ -1,0 +1,8 @@
+name: readme
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  readme:
+    uses: NaNIsaac/.github/.github/workflows/readme.yml@main
