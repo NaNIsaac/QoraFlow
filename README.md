@@ -131,6 +131,17 @@ uv run python -m QoraFlow.gui processed 109 --roi --log        # from run=0109_s
 uv run python -m QoraFlow.gui raw 109 1 110 --roi --vmax 500   # from raw run/scan/p-file
 ```
 
+## Validation
+
+All test data is **synthetic**; no measured data ships with the repository.
+
+- `examples/synthetic_pump_probe/` runs the reduction end to end on a scan with a known laser
+  response and compares the ROI curves with it. `expected.json` keeps the truth (with tolerances)
+  apart from a regression snapshot; `tests/test_example_synthetic_pump_probe.py` checks both.
+- Known limit found by it: the ROI centre of mass reads peak shifts about 4 % low when the ROI holds
+  a background ([#28](https://github.com/NaNIsaac/QoraFlow/issues/28)); that check is a strict
+  expected failure until it is fixed.
+
 ## Structure
 
 ```
