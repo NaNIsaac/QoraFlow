@@ -31,13 +31,30 @@ uv run python examples/synthetic_dark.py   # -> notebooks/dark.npy (514x1030 flo
 
 Requires Python 3.11-3.13 and [uv](https://docs.astral.sh/uv/).
 
+**1. Clone the repository**
+
 ```bash
 git clone https://github.com/NaNIsaac/QoraFlow.git
 cd QoraFlow
+```
+
+**2. Install the dependencies**
+
+<!-- test -->
+```bash
 uv sync --python 3.13
 ```
 
-Run the scripts from the repository root with `src` on the path (shown below). Tests: `uv run pytest`.
+**3. Check the install**
+
+Runs the tests; it exits non-zero if anything is broken.
+
+<!-- test -->
+```bash
+uv run pytest -q
+```
+
+Run the scripts from the repository root with `src` on the path (shown below).
 
 ## Usage
 
