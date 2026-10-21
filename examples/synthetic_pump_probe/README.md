@@ -21,8 +21,9 @@ Checked with Python 3.13 (QoraFlow does not install on 3.14 yet, QoraFlow#25).
    Delays -1, 0, 2, 6 and 10 ps, two files per delay, 800 shots per file.
 3. **Reduction.** `scripts/make_dark.py` and `scripts/integrating_main.py` run unchanged on the files
    (dark subtraction, QBPM normalization, laser on/off split, averaging per delay). Then
-   `DataAnalyzer.analyze_by_roi` measures ROI mean intensity and centre of mass on the ROI that
-   `auto_roi` picks, as in the README figure.
+   `DataAnalyzer.analyze_by_roi` measures ROI mean intensity and centre of mass on the ROI
+   (y 25-65, x 45-85 px) that `auto_roi` picks for this scan, as in the README figure. It is fixed in
+   `run.py` so that the example runs without a Qt binding.
 
 ## Result at seed 0
 
@@ -53,8 +54,8 @@ between seeds with no consistent sign.
   tolerances come from the scatter between seeds. The x shift is a strict xfail tied to #28, so a
   fix turns it into a failure that prompts updating this page. A test also checks that these
   values are the ones the generator injects.
-- **`regression`**: today's values at seed 0 (ratio ± 0.005, shift ± 0.02 px, the ROI and the
-  pixel-to-q factor), so any change in the reduction shows up.
+- **`regression`**: today's values at seed 0 (ratio ± 0.005, shift ± 0.02 px and the pixel-to-q
+  factor), so any change in the reduction shows up.
 
 It also checks that the response starts only after time zero.
 

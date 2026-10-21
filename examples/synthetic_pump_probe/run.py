@@ -24,6 +24,9 @@ SEED = 0
 # Delays in ps; 800 shots per file (alternating laser on/off), 2 files per delay.
 DELAYS = [-1.0, 0.0, 2.0, 6.0, 10.0]
 SHOTS = 800
+# (y1, y2, x1, x2) px: the region QoraFlow.gui.select_roi.auto_roi picks for this scan, fixed here so
+# the example runs without a Qt binding (that module imports the Qt ROI selector).
+ROI = (25, 65, 45, 85)
 
 
 def load_generator():
@@ -44,9 +47,10 @@ def injected(delay: float) -> tuple[float, float]:
 
 
 def run() -> dict:
+    from roi_rectangle import RoiRectangle
+
     from QoraFlow.analyzer.core import DataAnalyzer
     from QoraFlow.config import ConfigManager
-    from QoraFlow.gui.select_roi import auto_roi
     from QoraFlow.mathematics import mul_delta_q
 
     gen = load_generator()
@@ -59,7 +63,7 @@ def run() -> dict:
 
         ConfigManager.initialize(root / "config.yaml")
         config = ConfigManager.load_config()
-        roi = auto_roi(root / "raw" / "run=001" / "scan=001", config)
+        roi = RoiRectangle(*ROI)
         npz = config.path.processed_dir / "run=001" / "scan=001" / "run=0001_scan=0001_LND.npz"
         df = DataAnalyzer(npz).analyze_by_roi(roi)
         q_per_px = float(mul_delta_q(np.array([0.0, 1.0]))[1])

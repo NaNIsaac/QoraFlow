@@ -68,6 +68,6 @@ def test_the_response_only_starts_after_time_zero(result):
     assert shift[after].min() > shift[~after].max()
 
 
-@pytest.mark.parametrize("key", list(k for k in EXPECTED["regression"] if k != "about"))
+@pytest.mark.parametrize("key", [k for k in EXPECTED["regression"] if k != "about"])
 def test_output_is_unchanged(result, key):
     _check(key, result[key], EXPECTED["regression"][key])
