@@ -58,7 +58,9 @@ class PalXFELLoader(RawDataLoader):
         self._qbpm_path = f"qbpm/{self.config.param.hutch.value}/qbpm1"
 
         metadata: pd.DataFrame = pd.read_hdf(self.file, key="metadata")
-        merged_df: pd.DataFrame = self._get_metadata_and_qbpm_df(metadata)
+        merged_df: pd.DataFrame = self._get_metadata_and_qbpm_df(metadata).sort_values(
+            "original_image_index", kind="stable"
+        )
 
         if merged_df.empty:
             self.close()
@@ -68,8 +70,10 @@ class PalXFELLoader(RawDataLoader):
         self.pump_state: npt.NDArray[np.bool_] = self._get_pump_mask(merged_df)
         self.delay: np.float64 | float = self._get_delay(merged_df)
 
-        raw_indices = merged_df["original_image_index"].values.astype(np.int64)
-        self.metadata_index: npt.NDArray[np.int64] = np.sort(raw_indices)
+        # h5py needs increasing indices; qbpm and pump_state were taken from the same sorted rows
+        self.metadata_index: npt.NDArray[np.int64] = merged_df["original_image_index"].to_numpy(
+            dtype=np.int64
+        )
 
         self.logger.debug(
             f"Initialized {len(self.metadata_index)} indices for images and {len(self.qbpm)} qbpm data."
