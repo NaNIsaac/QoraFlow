@@ -1,11 +1,15 @@
 """Inputs that must fail loudly or degrade in a defined way, not produce quiet wrong output."""
 
+from types import SimpleNamespace
+
 import h5py
 import numpy as np
 import pandas as pd
 import pytest
+from roi_rectangle import RoiRectangle
 from test_palxfel_loader import collect, fake_config, write_scan  # noqa: F401
 
+from QoraFlow import mathematics
 from QoraFlow.analyzer.converter import convert_data, save_mat
 from QoraFlow.analyzer.core import DataAnalyzer
 from QoraFlow.config.enums import Hertz
@@ -98,7 +102,7 @@ def test_analyzer_requires_a_delay_axis(tmp_path):
 
 def test_analyzer_without_any_image_state_fails(tmp_path):
     path = write_npz(tmp_path / "a.npz", delay=np.arange(2.0))
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError, match="neither"):
         DataAnalyzer(path)
 
 
@@ -107,9 +111,28 @@ def test_analyzer_missing_file_raises(tmp_path):
         DataAnalyzer(tmp_path / "absent.npz")
 
 
-@pytest.mark.xfail(strict=True, reason="QoraFlow#30: the missing pump state is filled with ones")
 @pytest.mark.parametrize("present", ["poff", "pon"])
-def test_analyzer_refuses_a_file_with_one_pump_state(tmp_path, present):
+def test_a_missing_pump_state_is_absent_not_invented(tmp_path, monkeypatch, present):
+    """#30: the missing state used to be filled with ones and looked like data.
+
+    A pump-off run (pump_setting 0HZ) legitimately has only 'poff', so loading still works, with a
+    warning; the missing state is None, its ROI columns are NaN, and methods that need both states
+    refuse to run.
+    """
+    missing = {"poff": "pon", "pon": "poff"}[present]
+    geometry = SimpleNamespace(param=SimpleNamespace(sdd=1.3, dps=7.5e-5, beam_energy=9.8))
+    monkeypatch.setattr(mathematics.ConfigManager, "load_config", staticmethod(lambda: geometry))
     path = write_npz(tmp_path / "a.npz", delay=np.arange(2.0), **{present: np.full((2, 3, 3), 5.0)})
-    with pytest.raises(ValueError, match="pon|poff"):
-        DataAnalyzer(path)
+    with pytest.warns(UserWarning, match=f"no '{missing}'"):
+        analyzer = DataAnalyzer(path)
+    assert getattr(analyzer, f"{missing}_images") is None
+    assert getattr(analyzer, f"{present}_images").shape == (2, 3, 3)
+
+    df = analyzer.analyze_by_roi(RoiRectangle(0, 3, 0, 3))
+    assert df[[c for c in df if c.startswith(missing)]].isna().all().all()
+    assert df[f"{present}_intensity"].tolist() == [1.0, 1.0]
+
+    with pytest.raises(ValueError, match=missing):
+        analyzer.pon_subtract_by_poff()
+    summed = dict(zip(("poff", "pon"), analyzer.get_summed_image(), strict=True))
+    assert summed[missing] is None

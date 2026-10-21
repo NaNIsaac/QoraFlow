@@ -1,3 +1,4 @@
+import warnings
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -35,32 +36,49 @@ class DataAnalyzer:
 
         self.delay: npt.NDArray = data["delay"]
 
-        if "pon" not in data:
-            self.poff_images: npt.NDArray = data["poff"]
-            self.pon_images: npt.NDArray = np.full_like(data["poff"], 1)
-        elif "poff" not in data:
-            self.pon_images: npt.NDArray = data["pon"]
-            self.poff_images: npt.NDArray = np.full_like(data["pon"], 1)
-        else:
-            self.poff_images: npt.NDArray = data["poff"]
-            self.pon_images: npt.NDArray = data["pon"]
-        if angle:
-            self.poff_images = rotate(self.poff_images, angle, axes=(1, 2), reshape=False)
-            self.pon_images = rotate(self.pon_images, angle, axes=(1, 2), reshape=False)
+        states = {state: data[state] for state in ("poff", "pon") if state in data}
+        if not states:
+            raise ValueError(f"The file {file} contains neither 'poff' nor 'pon' images")
+        # A run without a pump (pump_setting 0HZ) legitimately has only 'poff'. A missing state
+        # stays None instead of being invented, and its ROI columns come out NaN.
+        for missing in {"poff", "pon"} - states.keys():
+            warnings.warn(
+                f"{file.name} has no '{missing}' images; '{missing}' results will be NaN "
+                "(expected for a pump_setting 0HZ run)",
+                UserWarning,
+                stacklevel=2,
+            )
 
-        self.poff_images = np.maximum(0, self.poff_images)
-        self.pon_images = np.maximum(0, self.pon_images)
+        def prepare(images: npt.NDArray | None) -> npt.NDArray | None:
+            if images is None:
+                return None
+            if angle:
+                images = rotate(images, angle, axes=(1, 2), reshape=False)
+            return np.maximum(0, images)
 
-    def get_summed_image(self) -> tuple[npt.NDArray, npt.NDArray]:
+        self.poff_images: npt.NDArray | None = prepare(states.get("poff"))
+        self.pon_images: npt.NDArray | None = prepare(states.get("pon"))
+
+    def _both_states(self) -> tuple[npt.NDArray, npt.NDArray]:
+        missing = [name for name in ("poff", "pon") if getattr(self, f"{name}_images") is None]
+        if missing:
+            raise ValueError(f"needs both pump states; this file has no {' or '.join(missing)}")
+        return self.poff_images, self.pon_images
+
+    def get_summed_image(self) -> tuple[npt.NDArray | None, npt.NDArray | None]:
         """
         return:
-            pump off image, pump on image
+            pump off image, pump on image (None for a state the file does not have)
         """
-        return self.poff_images.sum(axis=0), self.pon_images.sum(axis=0)
+        return tuple(
+            None if images is None else images.sum(axis=0)
+            for images in (self.poff_images, self.pon_images)
+        )
 
     def pon_subtract_by_poff(self):
         """Subtrack pump on images by pump off images"""
-        return np.maximum(self.pon_images - self.poff_images, 0)
+        poff, pon = self._both_states()
+        return np.maximum(pon - poff, 0)
 
     def _roi_center_of_masses(
         self, roi_rect: RoiRectangle, images: npt.NDArray
@@ -134,34 +152,28 @@ class DataAnalyzer:
         return roi_images.mean(axis=(1, 2))
 
     def analyze_by_roi(self, roi_rect: RoiRectangle) -> pd.DataFrame:
-
-        poff_com_x, poff_com_y = self._roi_center_of_masses(roi_rect, self.poff_images)
-        poff_intensity = self._roi_intensities(roi_rect, self.poff_images)
-        pon_com_x, pon_com_y = self._roi_center_of_masses(roi_rect, self.pon_images)
-        pon_intensity = self._roi_intensities(roi_rect, self.pon_images)
-
-        # poff_guassain_intensity, poff_gussian_com_x, poff_gussian_com_y = self._roi_gaussian(
-        #     roi_rect, self.poff_images
-        # )
-        # pon_guassain_intensity, pon_gussian_com_x, pon_gussian_com_y = self._roi_gaussian(
-        #     roi_rect, self.pon_images
-        # )
-
-        roi_df = pd.DataFrame(
-            data={
-                "poff_com_x": mul_delta_q(poff_com_x - poff_com_x[0]),
-                "poff_com_y": mul_delta_q(poff_com_y - poff_com_y[0]),
-                "poff_intensity": poff_intensity / poff_intensity[0],
-                "pon_com_x": mul_delta_q(pon_com_x - pon_com_x[0]),
-                "pon_com_y": mul_delta_q(pon_com_y - pon_com_y[0]),
-                "pon_intensity": pon_intensity / pon_intensity[0],
-                # "poff_gussian_com_x": poff_gussian_com_x,
-                # "poff_gussian_com_y": poff_gussian_com_y,
-                # "poff_guassain_intensity": poff_guassain_intensity / poff_guassain_intensity[0],
-                # "pon_gussian_com_x": pon_gussian_com_x,
-                # "pon_gussian_com_y": pon_gussian_com_y,
-                # "pon_guassain_intensity": pon_guassain_intensity / pon_guassain_intensity[0],
+        columns = {}
+        for state in ("poff", "pon"):
+            images = getattr(self, f"{state}_images")
+            if images is None:
+                nan = np.full(len(self.delay), np.nan)
+                columns |= {f"{state}_com_x": nan, f"{state}_com_y": nan, f"{state}_intensity": nan}
+                continue
+            com_x, com_y = self._roi_center_of_masses(roi_rect, images)
+            intensity = self._roi_intensities(roi_rect, images)
+            columns |= {
+                f"{state}_com_x": mul_delta_q(com_x - com_x[0]),
+                f"{state}_com_y": mul_delta_q(com_y - com_y[0]),
+                f"{state}_intensity": intensity / intensity[0],
             }
-        )
+        order = [
+            "poff_com_x",
+            "poff_com_y",
+            "poff_intensity",
+            "pon_com_x",
+            "pon_com_y",
+            "pon_intensity",
+        ]
+        roi_df = pd.DataFrame(data={key: columns[key] for key in order})
         roi_df = roi_df.set_index(self.delay)
         return roi_df
