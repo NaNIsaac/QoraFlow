@@ -36,20 +36,23 @@ Checked with Python 3.13 (QoraFlow does not install on 3.14 yet, QoraFlow#25).
 
 1 px is 5.73e-4 1/Angstrom at the config geometry (sdd 1.3 m, 75 um pixels, 9.8 keV).
 
-**The x shift reads about 4 % low.** At seeds 1, 2 and 3 the measured/injected shift ratio was
-0.945 to 0.98 at every delay, so this is systematic, not noise. The ROI centre of mass includes the
-photon floor and any residual background, which pull it toward the ROI centre; this is the likely
-reason but it was not isolated. The on/off ratio scatters by up to 0.03 between seeds with no
-consistent sign.
+**The x shift reads about 4 % low** ([QoraFlow#28](https://github.com/NaNIsaac/QoraFlow/issues/28)).
+At seeds 1, 2 and 3 the measured/injected shift ratio was 0.945 to 0.98 at every delay, so it is
+systematic, not noise. The centre of mass is taken on the raw ROI, which after dark subtraction
+still holds a flat background (about 0.175 per pixel at the ROI edge here); a flat background pulls
+the centre of mass toward the ROI centre. Subtracting the median of the ROI edge first gives 0.724,
+1.295 and 1.429 px, the injected shift within noise. The on/off ratio scatters by up to 0.03
+between seeds with no consistent sign.
 
 ## What the test checks
 
 `expected.json` holds two sets of numbers:
 
 - **`truth`**: the injected response with a tolerance for each quantity: on/off ratio ± 0.04,
-  x shift ± 0.15 px (10 % of the largest shift, which covers the 4 % bias above), y shift and
-  laser-off drift ± 0.05 px, laser-off intensity ± 0.03. A test also checks that these values are
-  the ones the generator injects.
+  x shift ± 0.05 px, y shift and laser-off drift ± 0.05 px, laser-off intensity ± 0.03. The
+  tolerances come from the scatter between seeds. The x shift is a strict xfail tied to #28, so a
+  fix turns it into a failure that prompts updating this page. A test also checks that these
+  values are the ones the generator injects.
 - **`regression`**: today's values at seed 0 (ratio ± 0.005, shift ± 0.02 px, the ROI and the
   pixel-to-q factor), so any change in the reduction shows up.
 

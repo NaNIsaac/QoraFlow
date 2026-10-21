@@ -27,7 +27,8 @@
         1.297,
         1.4465
       ],
-      "tol": 0.15
+      "tol": 0.05,
+      "known_failure": "QoraFlow#28"
     },
     "shift_y_px": {
       "value": [
