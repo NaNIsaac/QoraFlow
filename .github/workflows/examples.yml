@@ -24,7 +24,8 @@ jobs:
                  if not re.search(r"\b(synthetic|measured|measurement)\b",
                                   ast.get_docstring(ast.parse(p.read_text(encoding="utf-8"))) or "", re.I)]
           sys.exit(f"no synthetic/measured label in the docstring of: {bad}" if bad else 0)
-          EOF      - run: uv run --python 3.13 python examples/synthetic_dark.py "$RUNNER_TEMP/dark.npy"
+          EOF
+      - run: uv run --python 3.13 python examples/synthetic_dark.py "$RUNNER_TEMP/dark.npy"
       - run: uv run --python 3.13 python examples/readme_figure.py
         env:
           PYTHONPATH: src
