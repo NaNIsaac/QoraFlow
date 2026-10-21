@@ -1,0 +1,30 @@
+name: examples
+# Runs every script in examples/ from a fresh checkout, the way the README tells a new user to.
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  examples:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+      # Every example has to say whether it runs on synthetic or on measured data.
+      - name: Examples say synthetic or measured
+        run: |
+          python3 - <<'EOF'
+          import ast, pathlib, re, sys
+          bad = [p.name for p in sorted(pathlib.Path("examples").glob("*.py"))
+                 if not re.search(r"\b(synthetic|measured|measurement)\b",
+                                  ast.get_docstring(ast.parse(p.read_text(encoding="utf-8"))) or "", re.I)]
+          sys.exit(f"no synthetic/measured label in the docstring of: {bad}" if bad else 0)
+          EOF      - run: uv run --python 3.13 python examples/synthetic_dark.py "$RUNNER_TEMP/dark.npy"
+      - run: uv run --python 3.13 python examples/readme_figure.py
+        env:
+          PYTHONPATH: src
