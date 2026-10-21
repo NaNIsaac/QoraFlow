@@ -172,10 +172,18 @@ def pixel_to_q(pixels: npt.NDArray) -> npt.NDArray:
 
 
 def mul_delta_q(pixels: npt.NDArray) -> npt.NDArray:
+    """
+    |Δq| [1/Å] of a shift of `pixels` from pixels[0], detector normal to the scattered beam.
+
+    One pixel turns the scattered wavevector by delta = arctan(dps / sdd), so
+    |Δq| = k * delta = (2 * pi / wavelength) * delta per pixel, along either detector axis
+    (the per-pixel factor in `pixel_to_q`). This is |Δq|, not the change of |q|: along 2θ
+    that is |Δq| * cos(theta), and across the scattering plane it is zero to first order.
+    """
     config = ConfigManager.load_config()
-    two_theta = np.arctan2(config.param.dps, config.param.sdd)
+    delta = np.arctan2(config.param.dps, config.param.sdd)
     wavelength = get_wavelength(config.param.beam_energy)
-    delta_q = (4 * np.pi / wavelength) * two_theta
+    delta_q = (2 * np.pi / wavelength) * delta
     del_pixels = pixels - pixels[0]
     return del_pixels * delta_q
 
