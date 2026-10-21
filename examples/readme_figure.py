@@ -48,7 +48,9 @@ def laser_response(delay: float) -> tuple[float, float]:
     return 1 - 0.25 * (1 - np.exp(-delay / 1.5)), 1.5 * (1 - np.exp(-delay / 3))
 
 
-def write_h5(file: Path, images: np.ndarray, qbpm: np.ndarray, pump: np.ndarray, delay: float, t0: int) -> None:
+def write_h5(
+    file: Path, images: np.ndarray, qbpm: np.ndarray, pump: np.ndarray, delay: float, t0: int
+) -> None:
     timestamps = np.arange(t0, t0 + len(images), dtype=np.int64)
     metadata = pd.DataFrame({PUMP_COLUMN: pump, "delay_value": delay}, index=timestamps)
     metadata.to_hdf(file, key="metadata", mode="w")
@@ -68,7 +70,11 @@ def shots(n: int, pump: np.ndarray, delay: float) -> tuple[np.ndarray, np.ndarra
     images = np.empty((n, H, W), np.float32)
     for i in range(n):
         f, s = (factor, shift) if pump[i] else (1.0, 0.0)
-        peak = PEAK_PHOTONS * f * np.exp(-((yy - PEAK_Y) ** 2 + (xx - PEAK_X - s) ** 2) / (2 * PEAK_SIGMA**2))
+        peak = (
+            PEAK_PHOTONS
+            * f
+            * np.exp(-((yy - PEAK_Y) ** 2 + (xx - PEAK_X - s) ** 2) / (2 * PEAK_SIGMA**2))
+        )
         photons = rng.poisson(qbpm[i] * (peak + 0.02))
         images[i] = photons * PHOTON_KEV + pedestal + rng.normal(0, 1.5, (H, W))
     return images, qbpm
@@ -146,7 +152,9 @@ def plot(root: Path) -> None:
     diff = roi.slice(analyzer.pon_images[-1] - analyzer.poff_images[-1])
     delay = df.index
 
-    fig, axes = plt.subplots(1, 4, figsize=(14, 3.4), width_ratios=[1.35, 1, 1.15, 1.15], layout="constrained")
+    fig, axes = plt.subplots(
+        1, 4, figsize=(14, 3.4), width_ratios=[1.35, 1, 1.15, 1.15], layout="constrained"
+    )
     ax = axes[0]
     ax.imshow(np.log1p(poff_mean), cmap="magma")
     ax.add_patch(patches.Rectangle((x1, y1), x2 - x1, y2 - y1, ec="#4dd0e1", fc="none", lw=1.5))
@@ -169,7 +177,11 @@ def plot(root: Path) -> None:
     ax = axes[3]
     ax.plot(delay, df["poff_com_x"] * 1e3, "o-", c=off, ms=4, label="laser off")
     ax.plot(delay, df["pon_com_x"] * 1e3, "o-", c=on, ms=4, label="laser on")
-    ax.set(xlabel="Delay [ps]", ylabel=r"$\Delta$COM$_x$ [10$^{-3}$ Å$^{-1}$]", title="ROI centre of mass (x)")
+    ax.set(
+        xlabel="Delay [ps]",
+        ylabel=r"$\Delta$COM$_x$ [10$^{-3}$ Å$^{-1}$]",
+        title="ROI centre of mass (x)",
+    )
     for ax in axes[2:]:
         ax.title.set_fontsize(10)
         ax.grid(alpha=0.3)
