@@ -48,6 +48,9 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 
+[tool.ruff.lint]
+extend-select = ["I", "UP", "B"]
+
 # violations present when ruff became mandatory in CI; remove entries as they are fixed
 [tool.ruff.lint.extend-per-file-ignores]
 "notebooks/24_12_10/2D_visualization_example.ipynb" = ["F821"]

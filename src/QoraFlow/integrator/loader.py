@@ -22,12 +22,12 @@ class RawDataLoader(ABC):
     @abstractmethod
     def get_data(self) -> dict[str, npt.NDArray]:
         """Retrieve data"""
-    
+
     @abstractmethod
-    def get_chunked_data(self, chunk_size:int) -> Iterator[dict[str, npt.NDArray]]:
+    def get_chunked_data(self, chunk_size: int) -> Iterator[dict[str, npt.NDArray]]:
         """Yield Data"""
 
-    def close(self):
+    def close(self):  # noqa: B027 - optional hook, subclasses need not override
         """Optional close method"""
 
     def __enter__(self):
@@ -52,7 +52,9 @@ class PalXFELLoader(RawDataLoader):
         self.config: ExpConfig = ConfigManager.load_config()
 
         self._h5_file = h5py.File(self.file, "r")
-        self._image_path = f"detector/{self.config.param.hutch.value}/{self.config.param.detector.value}/image"
+        self._image_path = (
+            f"detector/{self.config.param.hutch.value}/{self.config.param.detector.value}/image"
+        )
         self._qbpm_path = f"qbpm/{self.config.param.hutch.value}/qbpm1"
 
         metadata: pd.DataFrame = pd.read_hdf(self.file, key="metadata")
@@ -74,16 +76,16 @@ class PalXFELLoader(RawDataLoader):
         )
 
     def close(self):
-            """Explicitly close the HDF5 file handle."""
-            if hasattr(self, "_h5_file") and self._h5_file:
-                try:
-                    self._h5_file.close()
-                except Exception:
-                    pass
-                self._h5_file = None
+        """Explicitly close the HDF5 file handle."""
+        if hasattr(self, "_h5_file") and self._h5_file:
+            try:
+                self._h5_file.close()
+            except Exception:
+                pass
+            self._h5_file = None
 
     def __del__(self):
-            self.close()
+        self.close()
 
     def _get_metadata_and_qbpm_df(self, metadata: pd.DataFrame) -> pd.DataFrame:
         """
@@ -110,10 +112,7 @@ class PalXFELLoader(RawDataLoader):
         )
 
         image_ts_df = pd.DataFrame(
-            {
-                "original_image_index": np.arange(len(images_ts), dtype=np.int64)
-            }, 
-            index=images_ts
+            {"original_image_index": np.arange(len(images_ts), dtype=np.int64)}, index=images_ts
         )
         qbpm_df = pd.DataFrame({"qbpm": list(qbpm)}, index=qbpm_ts)
 
@@ -155,7 +154,7 @@ class PalXFELLoader(RawDataLoader):
         # 1. Chunking Loop
         for start_idx in range(0, total_frames, chunk_size):
             end_idx = min(start_idx + chunk_size, total_frames)
-            
+
             # 2. Slice Indices for current chunk
             current_indices = self.metadata_index[start_idx:end_idx]
 
@@ -177,7 +176,7 @@ class PalXFELLoader(RawDataLoader):
             if np.any(poff_mask):
                 data_chunk["poff"] = np.maximum(0, images_chunk[poff_mask])
                 data_chunk["poff_qbpm"] = current_qbpm[poff_mask]
-            
+
             if np.any(pon_mask):
                 data_chunk["pon"] = np.maximum(0, images_chunk[pon_mask])
                 data_chunk["pon_qbpm"] = current_qbpm[pon_mask]
@@ -195,7 +194,7 @@ class PalXFELLoader(RawDataLoader):
         image_block_data = self._h5_file[self._image_path]["block0_values"]
 
         images: npt.NDArray = image_block_data[self.metadata_index]
-        
+
         data: dict[str, npt.NDArray] = {"delay": self.delay}
 
         poff_images = images[~self.pump_state]
@@ -221,7 +220,9 @@ def get_hdf5_images(file: str, config: ExpConfig) -> npt.NDArray:
     with h5py.File(file, "r") as hf:
         if "detector" not in hf:
             raise KeyError(f"Key 'detector' not found in {file}")
-        key: str = f"detector/{config.param.hutch.value}/{config.param.detector.value}/image/block0_values"
+        key: str = (
+            f"detector/{config.param.hutch.value}/{config.param.detector.value}/image/block0_values"
+        )
         images: np.ndarray = hf[key][:]
 
         return np.maximum(images, 0)
@@ -231,6 +232,7 @@ if __name__ == "__main__":
     import time
 
     from QoraFlow.filesystem import get_run_scan_dir
+
     ConfigManager.initialize("config.yaml")
     config: ExpConfig = ConfigManager.load_config()
     load_dir: Path = config.path.load_dir
@@ -251,7 +253,7 @@ if __name__ == "__main__":
     start_total = time.time()
     with PalXFELLoader(file) as loader:
         data = loader.get_data()
-        if 'poff' in data:
+        if "poff" in data:
             print(f"Full Load POFF: {data['poff'].shape}")
     print(f"Time: {time.time() - start_total:.4f} sec")
 
@@ -264,9 +266,9 @@ if __name__ == "__main__":
         # 100장씩 잘라서 로드
         for chunk in loader.get_chunked_data(chunk_size=100):
             chunk_count += 1
-            if 'poff' in chunk:
+            if "poff" in chunk:
                 print(f"  Chunk {chunk_count} POFF: {chunk['poff'].shape}")
-            if 'pon' in chunk:
+            if "pon" in chunk:
                 print(f"  Chunk {chunk_count} PON: {chunk['pon'].shape}")
     print(f"Time: {time.time() - start_total:.4f} sec")
     print("-" * 30)

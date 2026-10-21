@@ -2,7 +2,7 @@ import os
 
 import matplotlib
 
-matplotlib.use('QtAgg')
+matplotlib.use("QtAgg")
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
@@ -107,9 +107,8 @@ def get_roi_auto(
 ) -> RoiRectangle:
     """get roi_rect by max pixel"""
     cy, cx = np.unravel_index(np.argmax(image), image.shape)
-    return RoiRectangle(
-        cy - half_width, cy + half_width, cx - half_width, cx + half_width
-    )
+    return RoiRectangle(cy - half_width, cy + half_width, cx - half_width, cx + half_width)
+
 
 if __name__ == "__main__":
     roi_rect = select_roi_by_run_scan(144, 1, 0)

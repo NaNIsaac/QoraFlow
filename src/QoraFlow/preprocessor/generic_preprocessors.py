@@ -11,6 +11,7 @@ from ..logger import setup_logger
 
 logger = setup_logger()
 
+
 def ransac_regression(
     y: np.ndarray, x: np.ndarray, min_samples: int | None = None
 ) -> tuple[npt.NDArray[np.bool_], npt.NDArray, npt.NDArray]:
@@ -108,9 +109,7 @@ def filter_images_qbpm_by_linear_model(
     on the linear regression model and confidence interval.
     """
     intensites = images.sum(axis=(1, 2))
-    lower_bound, upper_bound, _ = get_linear_regression_confidence_bounds(
-        intensites, qbpm, sigma
-    )
+    lower_bound, upper_bound, _ = get_linear_regression_confidence_bounds(intensites, qbpm, sigma)
     mask = np.logical_and(intensites >= lower_bound, intensites <= upper_bound)
 
     return images[mask], qbpm[mask]
@@ -131,13 +130,14 @@ def div_images_by_qbpm(images: npt.NDArray, qbpm: npt.NDArray) -> npt.NDArray:
     """
     return images * qbpm.mean() / qbpm[:, np.newaxis, np.newaxis]
 
+
 @lru_cache(maxsize=1)
 def _load_cached_dark_image(dark_file_path: Path) -> np.ndarray | None:
     """
     Load dark image only ONCE and cache it in RAM.
     """
     if not dark_file_path.exists():
-        logger.warning(f"No dark image file found: \"{dark_file_path}\"")
+        logger.warning(f'No dark image file found: "{dark_file_path}"')
         return None
     try:
         dark_images = np.load(dark_file_path)
@@ -149,6 +149,7 @@ def _load_cached_dark_image(dark_file_path: Path) -> np.ndarray | None:
     except Exception as e:
         logger.error(f"Failed to load dark image: {e}")
         return None
+
 
 def subtract_dark(images: npt.NDArray) -> npt.NDArray:
     """

@@ -19,7 +19,7 @@ from .saver import SaverStrategy
 class CoreIntegrator:
     """
     Core pipeline class for integrating XFEL scan data.
-    
+
     Logic:
     1. Group files by 'merge_num' (Experimental Repeats).
     2. Load ALL images from these files (e.g., 3 files * 300 frames = 900 frames).
@@ -45,8 +45,10 @@ class CoreIntegrator:
         self.config: ExpConfig = ConfigManager.load_config()
 
         self.logger.info(f"Loader: {self.LoaderStrategy.__name__}")
-        self.logger.info(f"Merge Num: {self.merge_num} (Merging {self.merge_num} files into 1 dataset)")
-        
+        self.logger.info(
+            f"Merge Num: {self.merge_num} (Merging {self.merge_num} files into 1 dataset)"
+        )
+
         self._result: dict[str, dict[str, npt.NDArray]] | None = None
 
     def run(self, scan_dir: str | Path) -> dict[str, dict[str, npt.NDArray]]:
@@ -55,10 +57,8 @@ class CoreIntegrator:
 
         # Structure: { 'preprocessor_name': { 'pon': [(t1, avg_img1), ...], 'poff': [(t1, avg_img1), ...] } }
         final_results_list: dict[str, dict[str, list[Any]]] = defaultdict(lambda: defaultdict(list))
-        
-        hdf5_files: list[Path] = sorted(
-            scan_dir.glob("*.h5"), key=lambda file: int(file.stem[1:])
-        )
+
+        hdf5_files: list[Path] = sorted(scan_dir.glob("*.h5"), key=lambda file: int(file.stem[1:]))
 
         # Bundle files in merge_num unit and process
         batches = list(batched(hdf5_files, self.merge_num))
@@ -72,14 +72,13 @@ class CoreIntegrator:
             with ExitStack() as stack:
                 try:
                     loaders = [
-                        stack.enter_context(self.LoaderStrategy(h5_file))
-                        for h5_file in h5_batch
+                        stack.enter_context(self.LoaderStrategy(h5_file)) for h5_file in h5_batch
                     ]
                 except Exception as e:
                     self.logger.warning(f"Skipping batch due to load error: {e}")
                     continue
                 loaded_batches += 1
-                
+
                 # Return variables: { 'proc_name': { 'pon': 2D_Avg_Img, 'delay': Scalar } }
                 # [OOM Critical Point 1] Large raw data is processed here
                 batch_averaged_data = self._process_batch_group(loaders)
@@ -107,7 +106,7 @@ class CoreIntegrator:
         # [Final] Convert list -> Numpy Stack
         final_result_stack = self._stack_results(final_results_list)
         self._result = final_result_stack
-        
+
         return final_result_stack
 
     def _process_batch_group(
@@ -124,21 +123,24 @@ class CoreIntegrator:
         batch spanning several delays yields one averaged image per delay.
         """
         # 1. 누적기 초기화
-        accumulators = defaultdict(lambda: {
-            "pon_sum": None, "pon_count": 0,
-            "poff_sum": None, "poff_count": 0,
-            "delays": []
-        })
+        accumulators = defaultdict(
+            lambda: {
+                "pon_sum": None,
+                "pon_count": 0,
+                "poff_sum": None,
+                "poff_count": 0,
+                "delays": [],
+            }
+        )
 
         # 2. 모든 로더에 대해 반복
         for loader in loaders:
             # [핵심] 청크 단위(예: 100장)로 조금씩 가져옴
             for chunk_data in loader.get_chunked_data(chunk_size=self.chunk_size):
-                
                 if "delay" not in chunk_data:
                     continue
                 current_delay = float(chunk_data["delay"])
-                
+
                 # 전처리기별 수행
                 for name, preprocessor in self.preprocessor.items():
                     acc = accumulators[(name, round(current_delay, 6))]
@@ -149,10 +151,10 @@ class CoreIntegrator:
                         pon_img = chunk_data["pon"]
                         # QBPM 없으면 1로 채움
                         pon_qbpm = chunk_data.get("pon_qbpm", np.ones(len(pon_img)))
-                        
+
                         # 전처리 (100장 단위)
                         proc_pon, _ = preprocessor((pon_img, pon_qbpm))
-                        
+
                         if proc_pon.size > 0:
                             # 합계(Sum)만 누적 (메모리 절약)
                             batch_sum = proc_pon.sum(axis=0)
@@ -168,9 +170,9 @@ class CoreIntegrator:
                     if "poff" in chunk_data:
                         poff_img = chunk_data["poff"]
                         poff_qbpm = chunk_data.get("poff_qbpm", np.ones(len(poff_img)))
-                        
+
                         proc_poff, _ = preprocessor((poff_img, poff_qbpm))
-                        
+
                         if proc_poff.size > 0:
                             batch_sum = proc_poff.sum(axis=0)
                             batch_cnt = proc_poff.shape[0]
@@ -188,7 +190,7 @@ class CoreIntegrator:
         for (name, _), acc in accumulators.items():
             if not acc["delays"]:
                 continue
-            
+
             # 대표 딜레이 (평균값 사용)
             rep_delay = float(np.mean(acc["delays"]))
             rep_delay = round(rep_delay, 6)
@@ -196,7 +198,7 @@ class CoreIntegrator:
             res = {}
             if acc["pon_count"] > 0:
                 res["pon"] = acc["pon_sum"] / acc["pon_count"]
-            
+
             if acc["poff_count"] > 0:
                 res["poff"] = acc["poff_sum"] / acc["poff_count"]
 
@@ -221,7 +223,7 @@ class CoreIntegrator:
                 pairs = sorted(data_map.get(state, []), key=lambda pair: pair[0])
                 if not pairs:
                     continue
-                delays, images = zip(*pairs)
+                delays, images = zip(*pairs, strict=True)
                 state_delays[state] = np.array(delays)
                 stacked[proc_name][state] = np.stack(images, axis=0)
 

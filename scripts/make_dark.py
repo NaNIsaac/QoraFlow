@@ -9,6 +9,7 @@ logger: Logger = setup_logger()
 ConfigManager.initialize(r"config.yaml")
 config = ConfigManager.load_config()
 
+
 def main():
     raw_dark_dir = config.path.raw_dark_dir
     image_list = []
@@ -32,15 +33,15 @@ def main():
     ax.set_title("Mean Dark Image")
     im = ax.imshow(np.log1p(dark_img))
 
-    cbar = fig.colorbar(im, ax=ax, location='right', aspect=50)
-    cbar.set_label('Pixel Value (log scale)')
+    cbar = fig.colorbar(im, ax=ax, location="right", aspect=50)
+    cbar.set_label("Pixel Value (log scale)")
     plt.show()
 
     file = config.path.save_dark_dir
     np.save(file, dark_imgs)
 
     logger.info(f"File saved at {file}")
-    
+
 
 if __name__ == "__main__":
     main()

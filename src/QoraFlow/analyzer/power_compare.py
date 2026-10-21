@@ -93,9 +93,7 @@ def plot_power_compare(power_df: pd.DataFrame):
 def save_power_df(power_df: pd.DataFrame, root: str):
     for power, group in power_df.groupby("power"):
         df_filtered = group[["delay", "com_y", "com_x", "intensity"]]
-        file = os.path.join(
-            root, f"power={power:0>2}_run={power_run_dict[power]:0>3}.csv"
-        )
+        file = os.path.join(root, f"power={power:0>2}_run={power_run_dict[power]:0>3}.csv")
         df_filtered.to_csv(file, index=False)
 
 

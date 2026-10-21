@@ -29,9 +29,7 @@ def save_mat(file: str, data: dict[str, npt.NDArray]) -> None:
     savemat(file, {"data": data["poff"], "delay": data["delay"]})
 
 
-def convert_data(
-    input_format: str, output_format: str, input_file: str, save_file: str
-) -> None:
+def convert_data(input_format: str, output_format: str, input_file: str, save_file: str) -> None:
     match input_format:
         case "lcls_cube":
             data = load_lcls_cube(input_file)
@@ -65,9 +63,7 @@ if __name__ == "__main__":
             continue
 
         save_file_name: str = "_".join(names) + ".mat"
-        save_file: str = os.path.join(
-            "data/example/mat_files", save_file_name
-        )
+        save_file: str = os.path.join("data/example/mat_files", save_file_name)
         load_file: str = os.path.join(root, load_file_name)
         convert_data("lcls_cube", "mat", load_file, save_file)
         print(save_file)

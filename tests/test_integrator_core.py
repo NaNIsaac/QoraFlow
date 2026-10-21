@@ -62,7 +62,12 @@ def test_all_batches_fail_raises(tmp_path):
         (["2.0 poff", "1.0 poff"], {"poff": [1.0, 2.0], "delay": [1.0, 2.0]}),
         (
             ["3.0 pon poff", "1.0 poff", "2.0 pon"],
-            {"pon": [2.0, 3.0], "poff": [1.0, 3.0], "pon_delay": [2.0, 3.0], "poff_delay": [1.0, 3.0]},
+            {
+                "pon": [2.0, 3.0],
+                "poff": [1.0, 3.0],
+                "pon_delay": [2.0, 3.0],
+                "poff_delay": [1.0, 3.0],
+            },
         ),
     ],
 )

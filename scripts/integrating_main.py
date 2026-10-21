@@ -32,7 +32,7 @@ def setup_preprocessors(scan_dir: Path) -> dict[str, ImagesQbpmProcessor]:
     # filter_and_normalize_by_qbpm = make_qbpm_roi_normalizer(roi_rect)
 
     normalize_qbpm: ImagesQbpmProcessor = make_qbpm_roi_normalizer(roi_rect)
-    
+
     preprocessors: dict[str, ImagesQbpmProcessor] = {}
     # from itertools import permutations
     # for r in range(1, 4):
@@ -64,8 +64,8 @@ def integrate_scan(run_n: int, scan_n: int) -> None:
         PalXFELLoader,
         merge_num=config.param.merge_num,
         chunk_size=config.param.chunk_size,
-        preprocessor=preprocessors, 
-        logger=logger
+        preprocessor=preprocessors,
+        logger=logger,
     )
     integrator.run(scan_dir)
     # Set and use SaverStrategy

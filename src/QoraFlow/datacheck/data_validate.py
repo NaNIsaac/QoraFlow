@@ -15,9 +15,7 @@ def find_outliers_mad(data, threshold=3):
     """
     median = np.median(data)
     mad = np.median(np.abs(data - median))
-    modified_z = (
-        0.6745 * (data - median) / mad
-    )  # 정규 분포 가정 시 MAD 기반 Z-점수 근사
+    modified_z = 0.6745 * (data - median) / mad  # 정규 분포 가정 시 MAD 기반 Z-점수 근사
     return np.where(np.abs(modified_z) > threshold)
 
 

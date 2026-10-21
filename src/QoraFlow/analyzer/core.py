@@ -31,12 +31,10 @@ class DataAnalyzer:
 
         data: Mapping[str, npt.NDArray] = np.load(file)
         if "delay" not in data:
-            raise ValueError(
-                f"The file {file} does not contain the required keys: 'delay'"
-            )
+            raise ValueError(f"The file {file} does not contain the required keys: 'delay'")
 
         self.delay: npt.NDArray = data["delay"]
-        
+
         if "pon" not in data:
             self.poff_images: npt.NDArray = data["poff"]
             self.pon_images: npt.NDArray = np.full_like(data["poff"], 1)
@@ -47,9 +45,7 @@ class DataAnalyzer:
             self.poff_images: npt.NDArray = data["poff"]
             self.pon_images: npt.NDArray = data["pon"]
         if angle:
-            self.poff_images = rotate(
-                self.poff_images, angle, axes=(1, 2), reshape=False
-            )
+            self.poff_images = rotate(self.poff_images, angle, axes=(1, 2), reshape=False)
             self.pon_images = rotate(self.pon_images, angle, axes=(1, 2), reshape=False)
 
         self.poff_images = np.maximum(0, self.poff_images)
@@ -92,9 +88,7 @@ class DataAnalyzer:
         com_ys = []
 
         for image in roi_images:
-            max_y, max_x = np.unravel_index(
-                np.argmax(image), image.shape
-            )  # pylint: disable=unbalanced-tuple-unpacking
+            max_y, max_x = np.unravel_index(np.argmax(image), image.shape)  # pylint: disable=unbalanced-tuple-unpacking
 
             x: npt.NDArray = np.arange(0, width)
             y: npt.NDArray = np.arange(0, height)

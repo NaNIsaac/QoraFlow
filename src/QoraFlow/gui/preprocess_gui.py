@@ -92,9 +92,7 @@ def find_outliers_gui(y: npt.NDArray, x: npt.NDArray) -> float:
 
         # Update outlier count
         outlier_count = np.sum(~within_bounds)
-        outlier_text.set_text(
-            f"Outliers: {outlier_count} ({outlier_count / len(y):.1%})"
-        )
+        outlier_text.set_text(f"Outliers: {outlier_count} ({outlier_count / len(y):.1%})")
 
         fig.canvas.draw_idle()
 

@@ -82,9 +82,7 @@ def interactive_roi_selection(image: np.ndarray) -> tuple[int, int, int, int] | 
 # --- Decorators ---
 def data_source_options(func):
     func = click.argument("run_n", type=int)(func)
-    func = click.option("--scan", "scan_n", type=int, default=1, show_default=True)(
-        func
-    )
+    func = click.option("--scan", "scan_n", type=int, default=1, show_default=True)(func)
     return func
 
 

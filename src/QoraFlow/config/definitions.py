@@ -35,6 +35,7 @@ class ExpParams(BaseModel):
         y1 (int): The y1 setting.
         y2 (int): The y2 setting.
     """
+
     merge_num: int = 1
     chunk_size: int = 100
     hutch: Hutch = Hutch.EH1

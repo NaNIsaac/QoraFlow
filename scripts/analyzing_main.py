@@ -57,7 +57,7 @@ def main() -> None:
         pon_images: npt.NDArray = processor.pon_images
 
         # Select ROI using GUI
-        if  not (roi := RoiSelector().select_roi(np.log1p(poff_images.mean(axis=0)))):
+        if not (roi := RoiSelector().select_roi(np.log1p(poff_images.mean(axis=0)))):
             err_msg: str = f"No ROI Rectangle Set for run={run_num}, scan={scan_num}"
             logger.error(err_msg)
             raise ValueError(err_msg)
@@ -97,8 +97,7 @@ def main() -> None:
         # Save Figures
         figures_to_save = {
             "log_image.png": patch_rectangle(
-                np.log1p(processor.poff_images.sum(axis=0)),
-                    *roi_rect.to_tuple()
+                np.log1p(processor.poff_images.sum(axis=0)), *roi_rect.to_tuple()
             ),
             "delay-intensity.png": draw_intensity_figure(data_df),
             "delay-intensity_diff.png": draw_intensity_diff_figure(data_df),

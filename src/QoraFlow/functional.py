@@ -14,6 +14,7 @@ def identity(*args):
         return args[0]
     return args
 
+
 def compose(*funcs: Callable):
     """Combines multiple functions from right to left.
     This means the rightmost function is executed first,
@@ -23,6 +24,7 @@ def compose(*funcs: Callable):
     compose(h, g, f)(x) is equivalent to h(g(f(x)))
     """
     return reduce(lambda f, g: lambda x: f(g(x)), funcs)
+
 
 def pipe(*funcs: Callable):
     """Combines multiple functions from left to right.
@@ -39,7 +41,7 @@ def batched(iterable, n):
     """Batch data into tuples of length n. The last batch may be shorter."""
     # batched('ABCDEFG', 3) --> ABC DEF G
     if n < 1:
-        raise ValueError('n must be at least one')
+        raise ValueError("n must be at least one")
     it = iter(iterable)
     while batch := tuple(islice(it, n)):
         yield batch

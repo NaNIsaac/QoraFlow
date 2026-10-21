@@ -23,7 +23,7 @@ def get_run_scan_dir(
 
     # 3. Append sub_path if it exists
     if sub_path:
-        # Security/Bug fix: lstrip("/") prevents sub_path from being treated 
+        # Security/Bug fix: lstrip("/") prevents sub_path from being treated
         # as an absolute path (which would reset the path in pathlib)
         target_path /= sub_path.lstrip("/")
 

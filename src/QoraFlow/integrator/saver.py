@@ -65,7 +65,7 @@ class MatSaverStrategy(SaverStrategy):
         comment_str = self._get_formatted_comment(comment)
         mat_dir: Path = self.config.path.mat_dir
         mat_dir.mkdir(parents=True, exist_ok=True)
-        
+
         base_name = get_file_base_name(run_n, scan_n)
 
         for key, val in data_dict.items():
@@ -74,7 +74,7 @@ class MatSaverStrategy(SaverStrategy):
                 mat_format_images = axis_np2mat(val)
                 file_name = f"{base_name}_{key}{comment_str}.mat"
                 save_path = mat_dir / file_name
-                
+
                 savemat(save_path, {"data": mat_format_images})
                 self._file = save_path
 
@@ -95,14 +95,12 @@ class NpzSaverStrategy(SaverStrategy):
     ) -> None:
         comment_str = self._get_formatted_comment(comment)
         processed_dir = self.config.path.processed_dir
-        
+
         file_name = f"{get_file_base_name(run_n, scan_n)}{comment_str}.npz"
-        
+
         # make_run_scan_dir handles directory creation
-        npz_file: Path = make_run_scan_dir(
-            processed_dir, run_n, scan_n, sub_path=file_name
-        )
-        
+        npz_file: Path = make_run_scan_dir(processed_dir, run_n, scan_n, sub_path=file_name)
+
         np.savez(npz_file, **data_dict)
         self._file = npz_file
 
@@ -123,25 +121,23 @@ class TifSaverStrategy(SaverStrategy):
     ) -> None:
         comment_str = self._get_formatted_comment(comment)
         processed_dir = self.config.path.processed_dir
-        
+
         base_name = get_file_base_name(run_n, scan_n)
 
         # Iterate through dict to find saveable arrays
         for key, val in data_dict.items():
             # Skip scalar values or empty arrays if necessary, currently saving all arrays
             file_name = f"{base_name}_{key}{comment_str}.tif"
-            
-            tif_file: Path = make_run_scan_dir(
-                processed_dir, run_n, scan_n, sub_path=file_name
-            )
+
+            tif_file: Path = make_run_scan_dir(processed_dir, run_n, scan_n, sub_path=file_name)
 
             # Metadata for ImageJ
             metadata = {"spacing": 0.5, "unit": "um", "axes": "YX"}
-            
-            # Ensure proper float32 casting if specific to your pipeline, 
+
+            # Ensure proper float32 casting if specific to your pipeline,
             # otherwise save raw. Added check to ensure valid array.
             if isinstance(val, np.ndarray):
-                 # If 3D, ImageJ expects (Z, Y, X) usually.
+                # If 3D, ImageJ expects (Z, Y, X) usually.
                 tifffile.imwrite(
                     tif_file,
                     val,

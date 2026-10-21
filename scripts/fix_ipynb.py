@@ -3,7 +3,7 @@ from json import JSONDecodeError
 
 
 def clear_outputs(notebook_file: str, output_file: str):
-    with open(notebook_file, "r", encoding="utf-8") as f:
+    with open(notebook_file, encoding="utf-8") as f:
         notebook = json.load(f)
     for cell in notebook["cells"]:
         if cell["cell_type"] == "code":
@@ -17,7 +17,7 @@ if __name__ == "__main__":
     import os
 
     root: str = "./"
-    for root, dirs, files in os.walk(root):
+    for root, _dirs, files in os.walk(root):
         for file in files:
             if file.endswith(".ipynb"):
                 notebook = os.path.join(root, file)

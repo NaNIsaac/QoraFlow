@@ -35,9 +35,7 @@ def load_image(run_n: int, suffix: str = "LND") -> np.ndarray:
     return image
 
 
-def process_image(
-    image: np.ndarray, is_log: bool, vmin: float, vmax: float
-) -> np.ndarray:
+def process_image(image: np.ndarray, is_log: bool, vmin: float, vmax: float) -> np.ndarray:
     """Process image with specified log scaling and clipping."""
     adjusted_image = np.clip(image, vmin, vmax)
 
@@ -61,14 +59,14 @@ def main() -> None:
 @click.argument("run_n", type=int)
 @click.option("--roi", is_flag=True, help="Flag to trigger ROI selection.")
 @click.option("--log", is_flag=True, help="Flag to apply log1p to the image.")
+@click.option("--vmin", type=float, default=0.0, help="Minimum value for image clipping.")
+@click.option("--vmax", type=float, default=np.inf, help="Maximum value for image clipping.")
 @click.option(
-    "--vmin", type=float, default=0.0, help="Minimum value for image clipping."
+    "--suffix",
+    default="LND",
+    show_default=True,
+    help="Preprocessor suffix of the npz written by integrating_main.py (LND or raw).",
 )
-@click.option(
-    "--vmax", type=float, default=np.inf, help="Maximum value for image clipping."
-)
-@click.option("--suffix", default="LND", show_default=True,
-              help="Preprocessor suffix of the npz written by integrating_main.py (LND or raw).")
 def processed(run_n: int, roi: bool, log: bool, vmin: float, vmax: float, suffix: str) -> None:
     """
     Command-line interface to process and optionally display ROI of an image.
@@ -97,19 +95,11 @@ def processed(run_n: int, roi: bool, log: bool, vmin: float, vmax: float, suffix
 @click.argument("p_n", type=int)
 @click.option("--roi", is_flag=True, help="Flag to trigger ROI selection.")
 @click.option("--log", is_flag=True, help="Flag to apply log1p to the image.")
-@click.option(
-    "--vmin", type=float, default=0.0, help="Minimum value for image clipping."
-)
-@click.option(
-    "--vmax", type=float, default=np.inf, help="Maximum value for image clipping."
-)
-def raw(
-    run_n: int, scan_n: int, p_n: int, roi: bool, log: bool, vmin: float, vmax: float
-) -> None:
+@click.option("--vmin", type=float, default=0.0, help="Minimum value for image clipping.")
+@click.option("--vmax", type=float, default=np.inf, help="Maximum value for image clipping.")
+def raw(run_n: int, scan_n: int, p_n: int, roi: bool, log: bool, vmin: float, vmax: float) -> None:
     config = ConfigManager.load_config()
-    file = get_run_scan_dir(
-        config.path.load_dir, run_n, scan_n, sub_path=f"p{p_n:04}.h5"
-    )
+    file = get_run_scan_dir(config.path.load_dir, run_n, scan_n, sub_path=f"p{p_n:04}.h5")
     loader = PalXFELLoader(file)
     data = loader.get_data()
     image = np.sum(data["poff"], axis=0)

@@ -1,6 +1,7 @@
 """
 Global configuration manager with placeholder substitution.
 """
+
 import re
 from pathlib import Path
 from typing import Any
@@ -118,10 +119,19 @@ class ConfigManager:
                     key: ConfigManager.replace_placeholders(value, context, max_iterations)
                     for key, value in data.items()
                 }
-                context.update({k: v for k, v in result.items() if isinstance(v, dict | str | int | float | bool)})
+                context.update(
+                    {
+                        k: v
+                        for k, v in result.items()
+                        if isinstance(v, dict | str | int | float | bool)
+                    }
+                )
                 return result
             case list():
-                return [ConfigManager.replace_placeholders(item, context, max_iterations) for item in data]
+                return [
+                    ConfigManager.replace_placeholders(item, context, max_iterations)
+                    for item in data
+                ]
             case str():
                 match = re.fullmatch(r"\$\{([^}]+)\}", data)
                 if match:

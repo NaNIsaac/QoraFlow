@@ -7,7 +7,7 @@ from scipy.integrate import dblquad, quad
 from .config import ConfigManager
 
 # FWHM_COEFFICIENT = 2 * np.sqrt(2 * np.log(2))
-FWHM_COEFFICIENT: Final[float] = 2.35482  
+FWHM_COEFFICIENT: Final[float] = 2.35482
 WAVELENGTH_COEFFICIENT: Final[float] = 12.398419843320025
 
 
@@ -101,13 +101,9 @@ def gaussian2d(
         numpy.ndarray: A 1D array containing the values of the 2D Gaussian distribution flattened into a 1D array.
     """
     x, y = xy
-    a = (np.cos(theta) ** 2) / (2 * sigma_x**2) + (np.sin(theta) ** 2) / (
-        2 * sigma_y**2
-    )
+    a = (np.cos(theta) ** 2) / (2 * sigma_x**2) + (np.sin(theta) ** 2) / (2 * sigma_y**2)
     b = -(np.sin(2 * theta)) / (4 * sigma_x**2) + (np.sin(2 * theta)) / (4 * sigma_y**2)
-    c = (np.sin(theta) ** 2) / (2 * sigma_x**2) + (np.cos(theta) ** 2) / (
-        2 * sigma_y**2
-    )
+    c = (np.sin(theta) ** 2) / (2 * sigma_x**2) + (np.cos(theta) ** 2) / (2 * sigma_y**2)
     g = offset + amplitude * np.exp(
         -(a * ((x - x0) ** 2) + 2 * b * (x - x0) * (y - y0) + c * ((y - y0) ** 2))
     )
@@ -144,9 +140,7 @@ def integrate_fwhm_2d(
     y_upper = y0 + fwhm_y * 0.5
 
     # Perform the double integration
-    result, _ = dblquad(
-        integrand, y_lower, y_upper, lambda x: x_lower, lambda x: x_upper
-    )
+    result, _ = dblquad(integrand, y_lower, y_upper, lambda x: x_lower, lambda x: x_upper)
     return result
 
 
