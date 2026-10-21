@@ -1,9 +1,9 @@
 set timeout -1
-set PW "***REMOVED***"
-set LOAD_DIR "/xfel/ffs/dat/ue_250324_FXS/raw_data/h5/type=raw"
-set SAVE_DIR "portable2@10.4.133.1:/volume1/NetBackup"
+set PW $env(RSYNC_PASSWORD)
+set LOAD_DIR "data/example/raw_data/h5/type=raw"
+set SAVE_DIR "user@backup-host:/path/to/backup"
 
-set run_numbers {2 4 5 6 7 8 9 10}
+set run_numbers {1 2 3}
 
 foreach run_number $run_numbers {
     set formatted_run_number [format %03d $run_number]
