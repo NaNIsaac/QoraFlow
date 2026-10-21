@@ -35,7 +35,7 @@ Checked with Python 3.13 (QoraFlow does not install on 3.14 yet, QoraFlow#25).
 | 6 | 0.755 | 0.739 | 1.297 | 1.241 |
 | 10 | 0.750 | 0.743 | 1.446 | 1.366 |
 
-1 px is 5.73e-4 1/Angstrom at the config geometry (sdd 1.3 m, 75 um pixels, 9.8 keV).
+1 px is 2.87e-4 1/Angstrom at the config geometry (sdd 1.3 m, 75 um pixels, 9.8 keV).
 
 **The x shift reads about 4 % low** ([QoraFlow#28](https://github.com/NaNIsaac/QoraFlow/issues/28)).
 At seeds 1, 2 and 3 the measured/injected shift ratio was 0.945 to 0.98 at every delay, so it is
