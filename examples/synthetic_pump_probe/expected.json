@@ -1,0 +1,99 @@
+{
+  "about": "Checked by tests/test_example_synthetic_pump_probe.py. Units: delay in ps; intensities are ROI means divided by the first delay; shifts are centre-of-mass differences (laser on minus laser off, unless named poff_) in detector pixels; 1 px = q_per_px 1/Angstrom.",
+  "delay_ps": [
+    -1.0,
+    0.0,
+    2.0,
+    6.0,
+    10.0
+  ],
+  "truth": {
+    "about": "The response the generator injects into laser-on shots: intensity factor 1 - 0.25 (1 - exp(-t/1.5 ps)) and x shift 1.5 (1 - exp(-t/3 ps)) px for t > 0, nothing for t <= 0. Laser-off shots carry no response.",
+    "on_off_ratio": {
+      "value": [
+        1.0,
+        1.0,
+        0.8159,
+        0.7546,
+        0.7503
+      ],
+      "tol": 0.04
+    },
+    "shift_x_px": {
+      "value": [
+        0.0,
+        0.0,
+        0.7299,
+        1.297,
+        1.4465
+      ],
+      "tol": 0.15
+    },
+    "shift_y_px": {
+      "value": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "tol": 0.05
+    },
+    "poff_intensity": {
+      "value": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "tol": 0.03
+    },
+    "poff_shift_x_px": {
+      "value": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "tol": 0.05
+    }
+  },
+  "regression": {
+    "about": "What the reduction returns today at seed 0 (not the truth): a change here means the reduction changed.",
+    "on_off_ratio": {
+      "value": [
+        1.0,
+        0.9868,
+        0.7976,
+        0.7391,
+        0.7431
+      ],
+      "tol": 0.005
+    },
+    "shift_x_px": {
+      "value": [
+        0.0,
+        0.0141,
+        0.689,
+        1.2408,
+        1.3659
+      ],
+      "tol": 0.02
+    },
+    "q_per_px": {
+      "value": 0.0005730434,
+      "tol": 1e-09
+    },
+    "roi": {
+      "value": [
+        25,
+        65,
+        45,
+        85
+      ],
+      "tol": 0
+    }
+  }
+}
