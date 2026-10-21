@@ -29,5 +29,5 @@ def validata_sizes(path: str | Path):
 
 
 if __name__ == "__main__":
-    path: Path = Path("Y:\\230518_FXS\\raw_data\\h5\\type=raw\\run=005\\scan=001")
+    path: Path = Path("data/example/raw_data/h5/type=raw/run=005/scan=001")
     validata_sizes(path)

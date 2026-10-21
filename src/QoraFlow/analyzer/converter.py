@@ -52,7 +52,7 @@ def convert_data(
 if __name__ == "__main__":
     import os
 
-    root: str = "Z:\\241016_LCLS\\cube"
+    root: str = "data/example/cube"
     for load_file_name in os.listdir(root):
         base_name, extension = os.path.splitext(load_file_name)
         if extension != ".h5":
@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
         save_file_name: str = "_".join(names) + ".mat"
         save_file: str = os.path.join(
-            "Z:\\241016_LCLS\\analysis_data\\mat_files", save_file_name
+            "data/example/mat_files", save_file_name
         )
         load_file: str = os.path.join(root, load_file_name)
         convert_data("lcls_cube", "mat", load_file, save_file)
