@@ -7,8 +7,18 @@ permissions:
   contents: read
 jobs:
   pytest:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, python: "3.11"}
+          - {os: ubuntu-latest, python: "3.12"}
+          - {os: ubuntu-latest, python: "3.13"}
+          - {os: ubuntu-latest, python: "3.14"}
+          - {os: windows-latest, python: "3.14"}
+          - {os: macos-latest, python: "3.14"}
     env:
       MPLBACKEND: Agg
       CI: "true"
@@ -18,4 +28,4 @@ jobs:
         with:
           enable-cache: true
       - name: Run pytest
-        run: uv run --python 3.13 --group dev pytest -q tests
+        run: uv run --python ${{ matrix.python }} --group dev pytest -q tests
