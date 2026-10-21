@@ -61,6 +61,7 @@ class PalXFELLoader(RawDataLoader):
         merged_df: pd.DataFrame = self._get_metadata_and_qbpm_df(metadata).sort_values(
             "original_image_index", kind="stable"
         )
+        merged_df = self._drop_unknown_pump_frames(merged_df)
 
         if merged_df.empty:
             self.close()
@@ -132,16 +133,27 @@ class PalXFELLoader(RawDataLoader):
             return np.asarray(merged_df["delay_value"], dtype=np.float64)[0]
         return np.nan
 
+    def _rate_column(self) -> str:
+        return f"timestamp_info.RATE_{self.config.param.xray.value}_{self.config.param.pump_setting.value}"
+
+    def _drop_unknown_pump_frames(self, merged_df: pd.DataFrame) -> pd.DataFrame:
+        """Drop frames whose pump flag is missing (NaN would otherwise read as pump-on)."""
+        if self.config.param.pump_setting is Hertz.ZERO:
+            return merged_df
+        known = merged_df[self._rate_column()].notna()
+        dropped = int((~known).sum())
+        if dropped:
+            self.logger.warning(
+                f"Dropped {dropped} of {len(merged_df)} frames with an unknown pump flag "
+                f"in {self.file.name}"
+            )
+        return merged_df[known]
+
     def _get_pump_mask(self, merged_df: pd.DataFrame) -> npt.NDArray[np.bool_]:
         """Generates a pump status mask."""
         if self.config.param.pump_setting is Hertz.ZERO:
             return np.zeros(merged_df.shape[0], dtype=np.bool_)
-        return np.asarray(
-            merged_df[
-                f"timestamp_info.RATE_{self.config.param.xray.value}_{self.config.param.pump_setting.value}"
-            ],
-            dtype=np.bool_,
-        )
+        return np.asarray(merged_df[self._rate_column()], dtype=np.bool_)
 
     def get_chunked_data(self, chunk_size: int = 100) -> Iterator[dict[str, Any]]:
         """
