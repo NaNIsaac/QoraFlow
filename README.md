@@ -19,6 +19,14 @@ pedestal and QBPM fluctuations; laser-on shots after t=0 lose 25% intensity and
 shift 1.5 pixels) reduced by `scripts/make_dark.py`, `scripts/integrating_main.py`
 and `DataAnalyzer.analyze_by_roi`. Script: `examples/readme_figure.py`.
 
+The repository ships no measured data. Examples use generated synthetic data;
+the paths in `config.yaml` and the notebooks are placeholders. The dark frame
+some notebooks and `scripts/temp` load is written by:
+
+```bash
+uv run python examples/synthetic_dark.py   # -> notebooks/dark.npy (514x1030 float32)
+```
+
 ## Install
 
 Requires Python 3.11-3.13 and [uv](https://docs.astral.sh/uv/).
@@ -118,7 +126,7 @@ src/QoraFlow/
   datacheck/      raw-file size checks and MAD outlier detection
 scripts/          entry-point scripts (run from repo root)
 notebooks/        exploratory analysis notebooks
-examples/         README figure generator (synthetic data)
+examples/         synthetic data generators (README figure, dark frame)
 ```
 
 ## Credits

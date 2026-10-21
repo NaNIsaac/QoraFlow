@@ -4,17 +4,18 @@ import numpy as np
 from QoraFlow.filesystem import get_run_scan_dir
 from QoraFlow.integrator.loader import PalXFELLoader
 
-# ConfigManager.initialize(r"D:\Members\IsaacYong\Dev\QoraFlow\config.yaml")
+# ConfigManager.initialize(r"config.yaml")
 # config = ConfigManager.load_config()
-load_dir = r"X:\251128_FXS\raw_data\h5\type=raw"
+load_dir = r"data/example/raw_data/h5/type=raw"
 file = get_run_scan_dir(load_dir, 121, 1, sub_path="p0060.h5")
 loader = PalXFELLoader(file)
 data = loader.get_data()
 images = data["images"]
 raw_imgs = images
 # raw_imgs = np.maximum(images, 0)
-# dark_file = r"D:\Members\JiseongOh\251128_XFEL\analysis\rocking\dark_images\dark.npy"
-dark_file = r"C:\Users\user\Downloads\dark.npy"
+# dark_file = r"data/example/analysis/dark_images/dark.npy"
+# synthetic frame, written by examples/synthetic_dark.py
+dark_file = r"notebooks/dark.npy"
 dark_image = np.load(dark_file)
 if dark_image.ndim == 3:
     dark_image = np.mean(dark_image, axis=0)
