@@ -53,11 +53,12 @@ def main() -> None:
 
         # Initialize MeanDataProcessor
         processor: DataAnalyzer = DataAnalyzer(npz_file)
-        poff_images: npt.NDArray = processor.poff_images
-        pon_images: npt.NDArray = processor.pon_images
+        poff_images: npt.NDArray | None = processor.poff_images
+        pon_images: npt.NDArray | None = processor.pon_images
+        shown = poff_images if poff_images is not None else pon_images
 
         # Select ROI using GUI
-        if not (roi := RoiSelector().select_roi(np.log1p(poff_images.mean(axis=0)))):
+        if not (roi := RoiSelector().select_roi(np.log1p(shown.mean(axis=0)))):
             err_msg: str = f"No ROI Rectangle Set for run={run_num}, scan={scan_num}"
             logger.error(err_msg)
             raise ValueError(err_msg)
@@ -74,21 +75,17 @@ def main() -> None:
         )
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Slice images to ROI
-        roi_poff_images: npt.NDArray = roi_rect.slice(poff_images)
-        roi_pon_images: npt.NDArray = roi_rect.slice(pon_images)
-
         # Save Images and Data
         data_file: Path = output_dir / "data.csv"
         data_df.to_csv(data_file)
         logger.info(f"Saved CSV '{data_file}'")
 
-        images_to_save = {
-            "poff.tif": poff_images,
-            "pon.tif": pon_images,
-            "roi_poff.tif": roi_poff_images,
-            "roi_pon.tif": roi_pon_images,
-        }
+        # A pump-off run has no 'pon' images; skip the files of a missing state
+        images_to_save = {}
+        for state, images in (("poff", poff_images), ("pon", pon_images)):
+            if images is not None:
+                images_to_save[f"{state}.tif"] = images
+                images_to_save[f"roi_{state}.tif"] = roi_rect.slice(images)
         for filename, image_data in images_to_save.items():
             file_path = output_dir / filename
             tifffile.imwrite(file_path, image_data.astype(np.float32))
@@ -96,9 +93,7 @@ def main() -> None:
 
         # Save Figures
         figures_to_save = {
-            "log_image.png": patch_rectangle(
-                np.log1p(processor.poff_images.sum(axis=0)), *roi_rect.to_tuple()
-            ),
+            "log_image.png": patch_rectangle(np.log1p(shown.sum(axis=0)), *roi_rect.to_tuple()),
             "delay-intensity.png": draw_intensity_figure(data_df),
             "delay-intensity_diff.png": draw_intensity_diff_figure(data_df),
             "delay-com.png": draw_com_figure(data_df),

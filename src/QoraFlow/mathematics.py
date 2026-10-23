@@ -149,10 +149,11 @@ def get_wavelength(beam_energy: float) -> float:
 
 
 def pixel_to_del_q(pixels: npt.NDArray) -> npt.NDArray:
-
+    """pixel_to_q of the shift from pixels[0]: the chord between k_f at pixels[0] and at each pixel
+    when pixels[0] is where the detector normal meets it."""
     config = ConfigManager.load_config()
     del_pixels = pixels - pixels[0]
-    del_two_theta = np.arctan2(config.param.dps, config.param.sdd * del_pixels)
+    del_two_theta = np.arctan2(config.param.dps * del_pixels, config.param.sdd)
     wavelength = get_wavelength(config.param.beam_energy)
     return 4 * np.pi / wavelength * np.sin(del_two_theta / 2)
 
@@ -161,13 +162,12 @@ def pixel_to_q(pixels: npt.NDArray) -> npt.NDArray:
     """
     two_theta = arctan(dps * pixels / sdd)
     Q = (4 * pi / wavelength) * sin(two_theta / 2)
-      = (4 * pi / wavelength) * two_theta / 2
-      = (4 * pi / wavelength) * arctan(dps * pixels / sdd) / 2
-      = pixels * (4 * pi / wavelength) * arctan(dps / sdd) / 2
+      ≈ (4 * pi / wavelength) * two_theta / 2
+      ≈ pixels * (4 * pi / wavelength) * arctan(dps / sdd) / 2   (small angles)
     """
     config = ConfigManager.load_config()
     wavelength = get_wavelength(config.param.beam_energy)
-    two_theta = np.arctan2(config.param.dps, config.param.sdd * pixels)
+    two_theta = np.arctan2(config.param.dps * pixels, config.param.sdd)
     return 4 * np.pi / wavelength * np.sin(two_theta / 2)
 
 

@@ -132,34 +132,40 @@ def div_images_by_qbpm(images: npt.NDArray, qbpm: npt.NDArray) -> npt.NDArray:
 
 
 @lru_cache(maxsize=1)
-def _load_cached_dark_image(dark_file_path: Path) -> np.ndarray | None:
+def _load_cached_dark_image(dark_file_path: Path) -> np.ndarray:
     """
     Load dark image only ONCE and cache it in RAM.
+
+    Raises:
+        FileNotFoundError: the dark file does not exist.
+        ValueError: the file cannot be read or is not a 2D image or a 3D stack.
     """
-    if not dark_file_path.exists():
-        logger.warning(f'No dark image file found: "{dark_file_path}"')
-        return None
+    if not dark_file_path.is_file():
+        raise FileNotFoundError(f'No dark image file found: "{dark_file_path}"')
     try:
         dark_images = np.load(dark_file_path)
-        if dark_images.ndim == 3:
+    except (OSError, ValueError) as e:
+        raise ValueError(f'Failed to load dark image "{dark_file_path}": {e}') from e
+    match dark_images.ndim:
+        case 3:
             return np.mean(dark_images, axis=0)
-        if dark_images.ndim == 2:
+        case 2:
             return dark_images
-        return dark_images
-    except Exception as e:
-        logger.error(f"Failed to load dark image: {e}")
-        return None
+        case _:
+            raise ValueError(
+                f'Dark image "{dark_file_path}" must be 2D or 3D, got shape {dark_images.shape}'
+            )
 
 
 def subtract_dark(images: npt.NDArray) -> npt.NDArray:
     """
     Subtract dark background. Uses caching for performance.
+
+    Raises:
+        FileNotFoundError, ValueError: the configured dark image is missing or unusable.
     """
     config = ConfigManager.load_config()
-    dark_file = config.path.save_dark_dir
-    dark = _load_cached_dark_image(dark_file)
-    if dark is None:
-        return images
+    dark = _load_cached_dark_image(config.path.save_dark_dir)
 
     none_negative_dark = np.maximum(dark, 0)
     return np.maximum(0, images - none_negative_dark[np.newaxis, :, :])

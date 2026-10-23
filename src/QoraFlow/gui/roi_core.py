@@ -1,8 +1,5 @@
 import os
 
-import matplotlib
-
-matplotlib.use("QtAgg")
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
@@ -63,6 +60,9 @@ class RoiSelector:
     def select_roi(self, image: npt.NDArray) -> tuple[int, int, int, int] | None:
         if image.ndim != 2:
             raise TypeError(f"Invalid shape {image.shape} for image data")
+        # Only the interactive selector needs a window; choosing Qt at import time broke
+        # every headless import of this module (CI, scripts that only use auto_roi).
+        plt.switch_backend("QtAgg")
         fig, self.ax = plt.subplots(figsize=(10, 6))
         self.ax.imshow(image)
 
