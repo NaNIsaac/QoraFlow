@@ -3,6 +3,8 @@ import numpy as np
 import numpy.typing as npt
 from scipy.io import savemat
 
+from ..mathematics import axis_np2mat
+
 
 def load_npz(file: str) -> dict[str, npt.NDArray]:
     return dict(np.load(file))
@@ -26,7 +28,7 @@ def save_npz(file: str, data: dict[str, npt.NDArray]) -> None:
 
 
 def save_mat(file: str, data: dict[str, npt.NDArray]) -> None:
-    savemat(file, {"data": data["poff"], "delay": data["delay"]})
+    savemat(file, {"data": axis_np2mat(data["poff"]), "delay": data["delay"]})
 
 
 def convert_data(input_format: str, output_format: str, input_file: str, save_file: str) -> None:
