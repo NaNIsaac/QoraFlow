@@ -1,7 +1,7 @@
 # Reduction pipeline
 
 What happens to the data between the raw PAL-XFEL files and the ROI table, step by step, as the
-code on this branch does it. The README's [Usage](../README.md#usage) says how to run the
+code does it. The README's [Usage](../README.md#usage) says how to run the
 scripts; this page says what they compute, so that a number in the output can be traced back.
 
 All three scripts read `config.yaml` from the current directory. `${path.x}` placeholders in it
