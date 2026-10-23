@@ -1,6 +1,7 @@
 import warnings
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -10,6 +11,32 @@ from scipy.ndimage import rotate
 from scipy.optimize import curve_fit
 
 from ..mathematics import gaussian, mul_delta_q
+
+Background = Literal["edge", "plane"] | None
+
+
+def edge_background(
+    images: npt.NDArray, method: Literal["edge", "plane"], width: int = 3
+) -> npt.NDArray:
+    """Background of each image in a stack (n, h, w), estimated from its outer ``width`` pixels.
+
+    "edge" is the border median, a flat level. "plane" is the least-squares plane a + b·x + c·y
+    through the border, which also removes a gradient. Both read the peak's own tail as
+    background when the tail reaches the border: the median then oversubtracts a little, while
+    the plane takes the tail for a gradient and pulls the centre of mass back, which is worse
+    for a peak that sits off the ROI centre. A gradient biases the median the most. Keep the
+    ROI half-width several peak widths and the peak near its centre.
+    """
+    border = np.ones(images.shape[1:], bool)
+    border[width:-width, width:-width] = False
+    if method == "edge":
+        return np.median(images[:, border], axis=1)[:, None, None]
+    if method == "plane":
+        y, x = np.indices(images.shape[1:])
+        design = np.column_stack([np.ones(border.sum()), x[border], y[border]])
+        a, b, c = np.linalg.lstsq(design, images[:, border].T, rcond=None)[0][:, :, None, None]
+        return a + b * x + c * y
+    raise ValueError(f"unknown background method {method!r}, expected 'edge' or 'plane'")
 
 
 class DataAnalyzer:
@@ -81,9 +108,15 @@ class DataAnalyzer:
         return np.maximum(pon - poff, 0)
 
     def _roi_center_of_masses(
-        self, roi_rect: RoiRectangle, images: npt.NDArray
+        self,
+        roi_rect: RoiRectangle,
+        images: npt.NDArray,
+        background: Background = None,
+        edge_width: int = 3,
     ) -> tuple[npt.NDArray, npt.NDArray]:
         roi_images = roi_rect.slice(images)
+        if background is not None:
+            roi_images = roi_images - edge_background(roi_images, background, edge_width)
         height, width = roi_rect.height, roi_rect.width
 
         y_coords, x_coords = np.mgrid[:height, :width]
@@ -151,7 +184,19 @@ class DataAnalyzer:
 
         return roi_images.mean(axis=(1, 2))
 
-    def analyze_by_roi(self, roi_rect: RoiRectangle) -> pd.DataFrame:
+    def analyze_by_roi(
+        self, roi_rect: RoiRectangle, background: Background = None, edge_width: int = 3
+    ) -> pd.DataFrame:
+        """ROI centre of mass and mean intensity per delay, relative to the first delay.
+
+        Args:
+            roi_rect: The region of interest.
+            background: What to subtract from each ROI image before the centre of mass, estimated
+                from its outer ``edge_width`` pixels: None (nothing, the default), "edge" (their
+                median, a flat background) or "plane" (a least-squares plane a + b·x + c·y).
+                The ROI intensities are not changed. See ``edge_background`` for when each fails.
+            edge_width: Width in pixels of the ROI border used to estimate the background.
+        """
         columns = {}
         for state in ("poff", "pon"):
             images = getattr(self, f"{state}_images")
@@ -159,7 +204,7 @@ class DataAnalyzer:
                 nan = np.full(len(self.delay), np.nan)
                 columns |= {f"{state}_com_x": nan, f"{state}_com_y": nan, f"{state}_intensity": nan}
                 continue
-            com_x, com_y = self._roi_center_of_masses(roi_rect, images)
+            com_x, com_y = self._roi_center_of_masses(roi_rect, images, background, edge_width)
             intensity = self._roi_intensities(roi_rect, images)
             columns |= {
                 f"{state}_com_x": mul_delta_q(com_x - com_x[0]),

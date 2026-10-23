@@ -29,8 +29,12 @@ SHOTS = 800
 ROI = (25, 65, 45, 85)
 
 
-def load_generator():
-    """examples/readme_figure.py, freshly loaded so its module-level generator restarts at SEED."""
+def load_generator(seed: int = SEED):
+    """examples/readme_figure.py, freshly loaded so its module-level generator restarts at ``seed``.
+
+    Seed 0 is the module's own generator; other seeds replace it and redraw the dark pedestal in
+    the same order as at module load.
+    """
     spec = importlib.util.spec_from_file_location(
         "readme_figure", REPO / "examples/readme_figure.py"
     )
@@ -38,6 +42,9 @@ def load_generator():
     spec.loader.exec_module(module)
     module.DELAYS = DELAYS
     module.SHOTS = SHOTS
+    if seed != 0:
+        module.rng = np.random.default_rng(seed)
+        module.pedestal = module.rng.normal(40, 4, (module.H, module.W)).astype(np.float32)
     return module
 
 
@@ -46,14 +53,15 @@ def injected(delay: float) -> tuple[float, float]:
     return load_generator().laser_response(delay)
 
 
-def run() -> dict:
+def run(seed: int = SEED, background: str | None = None) -> dict:
+    """Reduce one synthetic scan; ``background`` goes to ``DataAnalyzer.analyze_by_roi``."""
     from roi_rectangle import RoiRectangle
 
     from QoraFlow.analyzer.core import DataAnalyzer
     from QoraFlow.config import ConfigManager
     from QoraFlow.mathematics import mul_delta_q
 
-    gen = load_generator()
+    gen = load_generator(seed)
     # Log and npz handles stay open until exit, which Windows cannot delete
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         root = Path(tmp)
@@ -65,14 +73,15 @@ def run() -> dict:
         config = ConfigManager.load_config()
         roi = RoiRectangle(*ROI)
         npz = config.path.processed_dir / "run=001" / "scan=001" / "run=0001_scan=0001_LND.npz"
-        df = DataAnalyzer(npz).analyze_by_roi(roi)
+        df = DataAnalyzer(npz).analyze_by_roi(roi, background=background)
         q_per_px = float(mul_delta_q(np.array([0.0, 1.0]))[1])
 
     def px(col: str) -> list[float]:
         return [float(v) / q_per_px for v in df[col]]
 
     return {
-        "seed": SEED,
+        "seed": seed,
+        "background": background,
         "delay_ps": [float(d) for d in df.index],
         "roi": list(roi.to_tuple()),
         "q_per_px": q_per_px,

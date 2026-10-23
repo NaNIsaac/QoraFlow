@@ -2,8 +2,9 @@
 -> DataAnalyzer ROI curves.
 
 Checks the reduction against the response that was injected (truth, with tolerances set by the
-Poisson noise of 800 shots per file; the x shift is a strict xfail tied to QoraFlow#28 because the
-ROI centre of mass reads about 4 % low), today's output as a regression snapshot, and that the
+Poisson noise of 800 shots per file; the x shift of the default reduction is a strict xfail tied to
+QoraFlow#28 because the ROI centre of mass reads about 5 % low, and passes with the background
+removed), today's output as a regression snapshot, and that the
 truth in expected.json is the response the generator really injects. Units: delay in ps, shifts in detector
 pixels, intensities relative to the first delay.
 """
@@ -57,6 +58,15 @@ def test_reduction_matches_the_truth(result, key):
 )
 def test_x_shift_matches_the_injected_shift(result):
     _check("shift_x_px", result["shift_x_px"], EXPECTED["truth"]["shift_x_px"])
+
+
+@pytest.mark.parametrize("background", ["edge", "plane"])
+def test_x_shift_matches_with_the_background_removed(background):
+    _check(
+        "shift_x_px",
+        example.run(background=background)["shift_x_px"],
+        EXPECTED["truth"]["shift_x_px"],
+    )
 
 
 def test_the_response_only_starts_after_time_zero(result):
