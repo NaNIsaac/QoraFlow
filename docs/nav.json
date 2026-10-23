@@ -1,0 +1,12 @@
+{
+  "sidebar": [
+    {
+      "text": "Getting Started",
+      "items": [{ "text": "Overview", "link": "index.md" }]
+    },
+    {
+      "text": "Guides",
+      "items": [{ "text": "Reduction pipeline", "link": "pipeline.md" }]
+    }
+  ]
+}
