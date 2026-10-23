@@ -95,3 +95,31 @@ def test_get_data_agrees_with_chunked_data(tmp_path):
     for state in ("pon", "poff"):
         frames = data[state][:, 0, 0]
         np.testing.assert_allclose(data[f"{state}_qbpm"], 10.0 * (frames + 1))
+
+
+def test_frames_with_an_unknown_pump_flag_are_dropped_not_read_as_pump_on(tmp_path):
+    path = tmp_path / "scan.h5"
+    write_scan(path, [0, 1, 2, 3, 4, 5])
+    metadata = pd.read_hdf(path, key="metadata")
+    flags = metadata["timestamp_info.RATE_HX_10HZ"].astype(float)
+    flags.iloc[2] = np.nan  # frame 2 has no pump flag
+    metadata["timestamp_info.RATE_HX_10HZ"] = flags
+    metadata.to_hdf(path, key="metadata", mode="a")
+
+    with PalXFELLoader(path) as loader:
+        pairs = collect(loader)
+
+    assert sorted(pairs) == [0, 1, 3, 4, 5]
+    for frame, (q, pump_on) in pairs.items():
+        assert q == pytest.approx(10.0 * (frame + 1))
+        assert pump_on is bool(frame % 2)
+
+
+def test_a_file_where_every_pump_flag_is_unknown_is_refused(tmp_path):
+    path = tmp_path / "scan.h5"
+    write_scan(path, [0, 1, 2, 3, 4, 5])
+    metadata = pd.read_hdf(path, key="metadata")
+    metadata["timestamp_info.RATE_HX_10HZ"] = np.nan
+    metadata.to_hdf(path, key="metadata", mode="a")
+    with pytest.raises(ValueError, match="No matching data"):
+        PalXFELLoader(path)
