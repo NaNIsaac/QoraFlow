@@ -4,18 +4,11 @@ import numpy as np
 
 
 def find_outliers_mad(data, threshold=3):
-    """MAD를 이용하여 이상치를 찾습니다.
-
-    Args:
-        data (pd.Series 또는 np.array): 데이터 배열.
-        threshold (float): 이상치로 간주할 MAD 배수 (기본값은 3).
-
-    Returns:
-        pd.Series: 이상치로 판단되는 데이터의 boolean Series.
-    """
+    """Indices (as from np.where) of points whose modified z-score exceeds `threshold`."""
     median = np.median(data)
     mad = np.median(np.abs(data - median))
-    modified_z = 0.6745 * (data - median) / mad  # 정규 분포 가정 시 MAD 기반 Z-점수 근사
+    # 0.6745 = Phi^-1(0.75): makes the MAD-based z comparable to a normal z-score
+    modified_z = 0.6745 * (data - median) / mad
     return np.where(np.abs(modified_z) > threshold)
 
 

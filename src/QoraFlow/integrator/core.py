@@ -80,7 +80,6 @@ class CoreIntegrator:
                 loaded_batches += 1
 
                 # Return variables: { 'proc_name': { 'pon': 2D_Avg_Img, 'delay': Scalar } }
-                # [OOM Critical Point 1] Large raw data is processed here
                 batch_averaged_data = self._process_batch_group(loaders)
 
                 # Save result
@@ -94,7 +93,7 @@ class CoreIntegrator:
                                     (delay_key, result_content[state])
                                 )
 
-            # 5. Memory release (Very Important: delete several GB of Raw data)
+            # Release the raw frames (several GB) before the next batch
             del batch_averaged_data
             gc.collect()
 
@@ -103,7 +102,6 @@ class CoreIntegrator:
 
         self.logger.info(f"Completed processing: {scan_dir}")
 
-        # [Final] Convert list -> Numpy Stack
         final_result_stack = self._stack_results(final_results_list)
         self._result = final_result_stack
 
@@ -114,7 +112,6 @@ class CoreIntegrator:
         loaders: list[RawDataLoader],
     ) -> dict[str, dict[float, dict[str, Any]]]:
         """
-        [Corrected]
         Incrementally processes chunks from loaders and accumulates sums.
         Memory usage remains low regardless of total file size.
 
@@ -122,7 +119,6 @@ class CoreIntegrator:
         6 decimal places are treated as the same nominal delay, so a merge
         batch spanning several delays yields one averaged image per delay.
         """
-        # 1. 누적기 초기화
         accumulators = defaultdict(
             lambda: {
                 "pon_sum": None,
@@ -133,30 +129,25 @@ class CoreIntegrator:
             }
         )
 
-        # 2. 모든 로더에 대해 반복
         for loader in loaders:
-            # [핵심] 청크 단위(예: 100장)로 조금씩 가져옴
             for chunk_data in loader.get_chunked_data(chunk_size=self.chunk_size):
                 if "delay" not in chunk_data:
                     continue
                 current_delay = float(chunk_data["delay"])
 
-                # 전처리기별 수행
                 for name, preprocessor in self.preprocessor.items():
                     acc = accumulators[(name, round(current_delay, 6))]
                     acc["delays"].append(current_delay)
 
-                    # --- Pump On ---
                     if "pon" in chunk_data:
                         pon_img = chunk_data["pon"]
-                        # QBPM 없으면 1로 채움
+                        # No QBPM signal: weight every frame by 1
                         pon_qbpm = chunk_data.get("pon_qbpm", np.ones(len(pon_img)))
 
-                        # 전처리 (100장 단위)
                         proc_pon, _ = preprocessor((pon_img, pon_qbpm))
 
                         if proc_pon.size > 0:
-                            # 합계(Sum)만 누적 (메모리 절약)
+                            # Accumulate only the sum to save memory
                             batch_sum = proc_pon.sum(axis=0)
                             batch_cnt = proc_pon.shape[0]
 
@@ -166,7 +157,6 @@ class CoreIntegrator:
                                 acc["pon_sum"] += batch_sum
                             acc["pon_count"] += batch_cnt
 
-                    # --- Pump Off ---
                     if "poff" in chunk_data:
                         poff_img = chunk_data["poff"]
                         poff_qbpm = chunk_data.get("poff_qbpm", np.ones(len(poff_img)))
@@ -183,15 +173,12 @@ class CoreIntegrator:
                                 acc["poff_sum"] += batch_sum
                             acc["poff_count"] += batch_cnt
 
-        # 3. 최종 평균 계산 (Finalize)
-        # 누적된 합계(Sum)를 개수(Count)로 나눠서 평균 이미지 생성
         batch_output = defaultdict(dict)
 
         for (name, _), acc in accumulators.items():
             if not acc["delays"]:
                 continue
 
-            # 대표 딜레이 (평균값 사용)
             rep_delay = float(np.mean(acc["delays"]))
             rep_delay = round(rep_delay, 6)
 

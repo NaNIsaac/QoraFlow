@@ -16,7 +16,6 @@ class ConfigManager:
     _config_file: Path | str | None = None
     _cached_config: ExpConfig | None = None
 
-    # -------------------- Public API --------------------
     @classmethod
     def initialize(cls, config_file: Path | str) -> None:
         """
@@ -64,7 +63,6 @@ class ConfigManager:
         with open(cls._config_file, "w", encoding="utf-8") as f:
             yaml.safe_dump(config_dict, f, default_flow_style=False, sort_keys=False)
 
-        # 캐시 초기화
         cls._cached_config = None
 
     @classmethod
@@ -74,7 +72,6 @@ class ConfigManager:
         """
         return cls.load_config(reload=True)
 
-    # -------------------- Internal Helpers --------------------
     @classmethod
     def __load_config(cls) -> ExpConfig:
         with open(cls._config_file, encoding="utf-8") as f:
@@ -169,9 +166,7 @@ class ConfigManager:
 
 
 if __name__ == "__main__":
-    # 최초 초기화
     ConfigManager.initialize("config.yaml")
 
-    # 어디서든 바로 사용 가능
     cfg = ConfigManager.load_config()
     print(cfg)

@@ -157,7 +157,6 @@ class PalXFELLoader(RawDataLoader):
 
     def get_chunked_data(self, chunk_size: int = 100) -> Iterator[dict[str, Any]]:
         """
-        [Optimized Method]
         Yields data in small chunks to prevent OOM errors.
         This is the preferred method for large-scale processing.
         """
@@ -167,22 +166,17 @@ class PalXFELLoader(RawDataLoader):
         image_dataset = self._h5_file[self._image_path]["block0_values"]
         total_frames = len(self.metadata_index)
 
-        # 1. Chunking Loop
         for start_idx in range(0, total_frames, chunk_size):
             end_idx = min(start_idx + chunk_size, total_frames)
 
-            # 2. Slice Indices for current chunk
             current_indices = self.metadata_index[start_idx:end_idx]
 
-            # 3. Load ONLY the current chunk of images from Disk -> RAM
-            # Note: HDF5 random access is used here.
+            # Reads only this chunk from disk (HDF5 random access)
             images_chunk = image_dataset[current_indices]
 
-            # 4. Slice Metadata (Already in RAM, fast)
             current_pump_state = self.pump_state[start_idx:end_idx]
             current_qbpm = self.qbpm[start_idx:end_idx]
 
-            # 5. Prepare Output
             data_chunk: dict[str, Any] = {"delay": self.delay}
 
             poff_mask = ~current_pump_state
@@ -252,7 +246,6 @@ if __name__ == "__main__":
     ConfigManager.initialize("config.yaml")
     config: ExpConfig = ConfigManager.load_config()
     load_dir: Path = config.path.load_dir
-    # 테스트할 파일 경로 확인 (예시)
     try:
         file: Path = get_run_scan_dir(load_dir, 165, 1, sub_path="p0005.h5")
         if not file.exists():
@@ -263,7 +256,6 @@ if __name__ == "__main__":
 
     print(f"Target: {file}")
 
-    # 1. 기존 방식 테스트
     print("-" * 30)
     print("[Test 1] Legacy get_data() (High Memory)")
     start_total = time.time()
@@ -273,13 +265,11 @@ if __name__ == "__main__":
             print(f"Full Load POFF: {data['poff'].shape}")
     print(f"Time: {time.time() - start_total:.4f} sec")
 
-    # 2. 최적화 방식 테스트
     print("-" * 30)
     print("[Test 2] Optimized get_chunked_data() (Low Memory)")
     start_total = time.time()
     chunk_count = 0
     with PalXFELLoader(file) as loader:
-        # 100장씩 잘라서 로드
         for chunk in loader.get_chunked_data(chunk_size=100):
             chunk_count += 1
             if "poff" in chunk:
