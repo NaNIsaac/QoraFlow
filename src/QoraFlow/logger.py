@@ -17,36 +17,29 @@ def setup_logger(level="INFO") -> Logger:
     if _IS_CONFIGURED:
         return logger
 
-    # 1. Config 로드 (아직 초기화 전이면 실행 위치의 config.yaml)
+    # Falls back to config.yaml in the working directory when not initialized
     if ConfigManager._config_file is None:
         ConfigManager.initialize("config.yaml")
     config = ConfigManager.load_config()
-    log_dir: Path = Path(config.path.log_dir)  # Path 객체 보장
+    log_dir: Path = Path(config.path.log_dir)
 
-    # 2. 포맷 분리 (핵심: 파일에는 색상 코드를 넣지 않음)
-    # Console용 (Color 포함)
+    # Separate formats: the file sink must not contain colour markup
     console_fmt = (
         "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
         "<level>{level: <8}</level> | "
         "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
         "<level>{message}</level>"
     )
-    # File용 (Plain Text)
     file_fmt = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}"
 
-    # 3. 파일 경로 설정 (Rotation이 있으므로 파일명에 초 단위 시간은 불필요할 수 있음)
-    # 매번 실행시마다 분리하고 싶다면 유지, 아니라면 'app.log'로 고정하고 rotation에 맡김
     log_file = log_dir / "{time:YYYY-MM-DD}" / "app_{time:HHmmss}.log"
 
-    # 4. 핸들러 초기화 (remove는 최초 1회만 수행됨)
+    # Drop loguru's default stderr handler
     logger.remove()
 
-    # Console Handler
     logger.add(sys.stderr, format=console_fmt, level=level)
 
-    # File Handler
-    # enqueue=True: 멀티프로세싱/스레드 환경에서 로그 꺠짐 방지 (Async Safe)
-    # backtrace=True, diagnose=True: 에러 발생 시 상세 정보
+    # enqueue=True: avoids interleaved log lines under multiprocessing and threads
     logger.add(
         log_file,
         format=file_fmt,

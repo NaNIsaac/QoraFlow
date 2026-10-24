@@ -13,15 +13,12 @@ def get_run_scan_dir(
     Generate the directory for a given run and scan number.
     Robustly handles all combinations of scan and sub_path.
     """
-    # 1. Start with the Run directory (This is always required)
-    # We cast run to int to ensure string formatting (:03d) works even if a string "1" is passed
+    # int() so that a string such as "1" still formats with :03d
     target_path = Path(mother) / f"run={int(run):03d}"
 
-    # 2. Append Scan directory if it exists
     if scan is not None:
         target_path /= f"scan={int(scan):03d}"
 
-    # 3. Append sub_path if it exists
     if sub_path:
         # Security/Bug fix: lstrip("/") prevents sub_path from being treated
         # as an absolute path (which would reset the path in pathlib)
