@@ -27,6 +27,12 @@ some notebooks and `scripts/temp` load is written by:
 uv run python examples/synthetic_dark.py   # -> notebooks/dark.npy (514x1030 float32)
 ```
 
+## Start with the pipeline
+
+1. **Input and reduction:** JUNGFRAU HDF5 shots, laser on/off flags and QBPM readings are reduced to delay-resolved images; see [usage and configuration](#usage).
+2. **Derived observables:** the [example result](docs/pipeline_example.png) shows the averaged reference image, laser-on minus laser-off image, ROI intensity and peak center of mass versus delay. Regenerate it with [`examples/readme_figure.py`](examples/readme_figure.py).
+3. **Evidence and limits:** read [validation](#validation) before applying the pipeline to a beamtime dataset. The illustrated run is **synthetic**, and this repository does not include measured data.
+
 ## Install
 
 Requires Python 3.11-3.13 and [uv](https://docs.astral.sh/uv/).
