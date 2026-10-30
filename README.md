@@ -2,22 +2,30 @@
 
 [![Tests](https://github.com/NaNIsaac/QoraFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/NaNIsaac/QoraFlow/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.md)
 
-**Reduce PAL-XFEL pump-probe X-ray diffraction runs to laser-on/off images per delay, then to ROI intensity and peak shift vs delay.**
+A pump–probe experiment asks how a sample changes after a laser pulse. The
+laser excites the sample; an X-ray pulse records a diffraction image after a
+chosen delay. Repeating this at many delays produces thousands of detector
+frames, **not yet a plot of what changed over time**.
 
-QoraFlow is for pump-probe experiments at PAL-XFEL: a laser pumps the sample, an
-X-ray pulse probes it after a set delay, and the JUNGFRAU detector images, QBPM
-intensity-monitor readings and laser on/off flags end up in HDF5 files. It reads
-those raw run/scan files, splits shots into laser-on and laser-off, applies dark
-subtraction, QBPM normalization and LSB quantization, averages images per delay
-and writes `.npz` and `.mat` files. A second script measures ROI intensity and
-center of mass as a function of delay and saves figures, TIFF stacks and a CSV.
+**QoraFlow turns those frames into a time series.** It separates shots taken
+with and without the laser, corrects detector background and incoming-beam
+intensity, and averages images at each delay. It then tracks how the intensity
+and position of a selected diffraction peak change with time.
+
+For PAL-XFEL data, the inputs are HDF5 files containing JUNGFRAU detector
+images, laser-on/off flags, and QBPM beam-monitor readings. The outputs are
+processed image arrays (`.npz`/`.mat`), plots, TIFF stacks, and a CSV of
+peak measurements. More specific processing steps, including LSB quantization,
+are documented in the [pipeline](docs/pipeline.md).
 
 ![Synthetic scan reduced by QoraFlow: averaged laser-off image with ROI, on minus off difference, ROI intensity and centre of mass vs delay](https://raw.githubusercontent.com/NaNIsaac/QoraFlow/main/docs/pipeline_example.png)
 
-A **synthetic** scan (15 delays, one Gaussian Bragg peak with Poisson noise, dark
-pedestal and QBPM fluctuations; laser-on shots after t=0 lose 25% intensity and
-shift 1.5 pixels) reduced by `scripts/make_dark.py`, `scripts/integrating_main.py`
-and `DataAnalyzer.analyze_by_roi`. Script: `examples/readme_figure.py`.
+**What to look at:** the first panels show the reference diffraction image and
+the change when the laser is on. The plots track the selected peak's intensity
+and centre position across 15 delays. The input is **synthetic**: after time
+zero, the simulated peak becomes 25% weaker and moves 1.5 detector pixels.
+The example adds Poisson noise, detector background, and beam-intensity
+fluctuations. [Figure script](examples/readme_figure.py).
 
 The repository ships no measured data. Examples use generated synthetic data;
 the paths in `config.yaml` and the notebooks are placeholders. The dark frame
@@ -27,11 +35,11 @@ some notebooks and `scripts/temp` load is written by:
 uv run python examples/synthetic_dark.py   # -> notebooks/dark.npy (514x1030 float32)
 ```
 
-## Start with the pipeline
+## Where to go next
 
-1. **Input and reduction:** JUNGFRAU HDF5 shots, laser on/off flags and QBPM readings are reduced to delay-resolved images; see [usage and configuration](#usage).
-2. **Derived observables:** the [example result](docs/pipeline_example.png) shows the averaged reference image, laser-on minus laser-off image, ROI intensity and peak center of mass versus delay. Regenerate it with [`examples/readme_figure.py`](examples/readme_figure.py).
-3. **Evidence and limits:** read [validation](#validation) before applying the pipeline to a beamtime dataset. The illustrated run is **synthetic**, and this repository does not include measured data.
+- **Run the pipeline:** [installation](#install) and [configuration](#usage) show how to process a PAL-XFEL run.
+- **Understand each correction:** [reduction steps](docs/pipeline.md) explain the dark frame, beam-monitor normalization, and output arrays.
+- **Check the scope:** [validation](#validation) describes the tests and limitations. This repository does not distribute measured beamtime data.
 
 ## Install
 
