@@ -70,7 +70,7 @@ def write_case(root: Path, scenario: str) -> tuple[Path, dict]:
                 (np.arange(N, dtype=np.float32) + 1)[:, None] * 2.5
             )
 
-    valid = set(int(i) for i in order)
+    valid = {int(i) for i in order}
     if scenario == "missing_pump_flags":
         valid.difference_update({2, 5})
     if scenario == "no_qbpm_timestamp_overlap":
