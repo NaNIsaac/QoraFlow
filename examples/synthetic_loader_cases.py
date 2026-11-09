@@ -95,7 +95,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--scenario", choices=CASES)
     args = parser.parse_args()
-    for name in ([args.scenario] if args.scenario else CASES):
+    for name in [args.scenario] if args.scenario else CASES:
         path, truth = write_case(args.output, name)
         print(f"{path}: {len(truth['expected_frame_indices'])} expected frames")
 
