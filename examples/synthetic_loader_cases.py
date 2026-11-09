@@ -40,8 +40,9 @@ def write_case(root: Path, scenario: str) -> tuple[Path, dict]:
     elif scenario == "partial_metadata":
         order = np.array([0, 2, 4, 6])
 
-    flags = np.array([bool(i % 2) for i in order], dtype=object)
+    flags = np.array([bool(i % 2) for i in order], dtype=bool)
     if scenario == "missing_pump_flags":
+        flags = flags.astype(float)
         flags[2] = np.nan
         flags[5] = np.nan
 
