@@ -1,4 +1,5 @@
 """Scenario-matrix tests exercise the real PAL loader against known synthetic truth."""
+
 import importlib.util
 import json
 from pathlib import Path
@@ -30,9 +31,7 @@ def test_loader_scenarios_against_independent_truth(tmp_path, scenario):
             for state, is_on in (("poff", False), ("pon", True)):
                 if state not in chunk:
                     continue
-                for image, qbpm in zip(
-                    chunk[state], chunk[f"{state}_qbpm"], strict=True
-                ):
+                for image, qbpm in zip(chunk[state], chunk[f"{state}_qbpm"], strict=True):
                     index = int(image[0, 0])
                     assert np.all(image == index)
                     assert index not in found
@@ -40,13 +39,12 @@ def test_loader_scenarios_against_independent_truth(tmp_path, scenario):
         full = loader.get_data()
         for state in ("poff", "pon"):
             expected_indices = [
-                i for i in truth["expected_frame_indices"]
+                i
+                for i in truth["expected_frame_indices"]
                 if truth["expected_pump_on"][str(i)] is (state == "pon")
             ]
             if expected_indices:
-                np.testing.assert_array_equal(
-                    full[state][:, 0, 0], expected_indices
-                )
+                np.testing.assert_array_equal(full[state][:, 0, 0], expected_indices)
             else:
                 assert state not in full
 
