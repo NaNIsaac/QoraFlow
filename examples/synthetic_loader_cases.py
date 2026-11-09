@@ -6,6 +6,7 @@ No measured data or local credentials are used.
 Example:
     python examples/synthetic_loader_cases.py --output /tmp/qoraflow-cases
 """
+
 import argparse
 import json
 from pathlib import Path
@@ -63,12 +64,8 @@ def write_case(root: Path, scenario: str) -> tuple[Path, dict]:
 
         for channel in range(1, 5):
             qbpm = hf.create_group(f"qbpm/eh1/qbpm1/waveforms.ch{channel}")
-            qbpm["axis1"] = timestamps + (
-                5000 if scenario == "no_qbpm_timestamp_overlap" else 0
-            )
-            qbpm["block0_values"] = (
-                (np.arange(N, dtype=np.float32) + 1)[:, None] * 2.5
-            )
+            qbpm["axis1"] = timestamps + (5000 if scenario == "no_qbpm_timestamp_overlap" else 0)
+            qbpm["block0_values"] = (np.arange(N, dtype=np.float32) + 1)[:, None] * 2.5
 
     valid = {int(i) for i in order}
     if scenario == "missing_pump_flags":
@@ -84,9 +81,7 @@ def write_case(root: Path, scenario: str) -> tuple[Path, dict]:
         "expect_loader_error": scenario == "no_qbpm_timestamp_overlap",
         "provenance": "synthetic, not measured data",
     }
-    (root / f"{scenario}.json").write_text(
-        json.dumps(truth, indent=2) + "\n", encoding="utf-8"
-    )
+    (root / f"{scenario}.json").write_text(json.dumps(truth, indent=2) + "\n", encoding="utf-8")
     return path, truth
 
 
