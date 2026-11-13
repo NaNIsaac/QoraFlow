@@ -14,7 +14,7 @@ jobs:
       MPLBACKEND: Agg
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: astral-sh/setup-uv@v10.3.3
       # Every example has to say whether it runs on synthetic or on measured data.
       - name: Examples say synthetic or measured
         run: |
