@@ -35,12 +35,6 @@ some notebooks and `scripts/temp` load is written by:
 uv run python examples/synthetic_dark.py   # -> notebooks/dark.npy (514x1030 float32)
 ```
 
-## Where to go next
-
-- **Run the pipeline:** [installation](#install) and [configuration](#usage) show how to process a PAL-XFEL run.
-- **Understand each correction:** [reduction steps](docs/pipeline.md) explain the dark frame, beam-monitor normalization, and output arrays.
-- **Check the scope:** [validation](#validation) describes the tests and limitations. This repository does not distribute measured beamtime data.
-
 ## Install
 
 Requires Python 3.11-3.13 and [uv](https://docs.astral.sh/uv/).
@@ -70,7 +64,7 @@ uv run pytest -q
 
 Run the scripts from the repository root with `src` on the path (shown below).
 
-## Usage
+## Quick start
 
 Edit `config.yaml` in the repository root. The main fields:
 
@@ -144,6 +138,12 @@ To pick an ROI interactively (Qt window; `--roi` prints the selected rectangle):
 uv run python -m QoraFlow.gui processed 109 --roi --log        # from run=0109_scan=0001_LND.npz (--suffix raw)
 uv run python -m QoraFlow.gui raw 109 1 110 --roi --vmax 500   # from raw run/scan/p-file
 ```
+
+## Documentation
+
+- [Reduction steps](docs/pipeline.md): the dark frame, beam-monitor normalization, LSB quantization and the arrays each script writes.
+- [Validation](#validation): the synthetic checks and the known limits. This repository distributes no measured beamtime data.
+- [Structure](#structure): the modules and the entry-point scripts, for changing the pipeline rather than running it.
 
 ## Validation
 

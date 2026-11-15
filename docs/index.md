@@ -27,7 +27,7 @@ uv run pytest -q
 ```
 
 The scripts import the package from `src/`, so they run with `PYTHONPATH=src` from the repository
-root (see the README's [Usage](../README.md#usage)).
+root (see the README's [Quick start](../README.md#quick-start)).
 
 ## First run
 
@@ -75,6 +75,6 @@ it checks and its limits.
 ## Where to go next
 
 - [Reduction pipeline](pipeline.md), on this site: what each step does to the data, in order, from the raw HDF5 files to the ROI table.
-- The README's [Usage](../README.md#usage): `config.yaml`, the three scripts, the raw file layout, and the Qt ROI selector.
+- The README's [Quick start](../README.md#quick-start): `config.yaml`, the three scripts, the raw file layout, and the Qt ROI selector.
 - [Validation](../README.md#validation) in the README, and the synthetic example above.
 - The Python API page lists the public functions and classes of the `QoraFlow` package with their docstrings.
