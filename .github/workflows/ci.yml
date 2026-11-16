@@ -2,23 +2,40 @@ name: Tests
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
+# A newer push to a pull request replaces the run that is still going
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - id: pick
+        shell: bash
+        # macOS runs only on release tags or manual dispatch; Linux and Windows run on every push
+        run: |
+          base='{"os":"ubuntu-latest","python":"3.11"},{"os":"ubuntu-latest","python":"3.12"},{"os":"ubuntu-latest","python":"3.13"},{"os":"ubuntu-latest","python":"3.14"},{"os":"windows-latest","python":"3.14"}'
+          if [[ "$GITHUB_REF" == refs/tags/v* || "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            echo "matrix={\"include\":[$base,{\"os\":\"macos-latest\",\"python\":\"3.14\"}]}" >> "$GITHUB_OUTPUT"
+          else
+            echo "matrix={\"include\":[$base]}" >> "$GITHUB_OUTPUT"
+          fi
+
   pytest:
+    needs: plan
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - {os: ubuntu-latest, python: "3.11"}
-          - {os: ubuntu-latest, python: "3.12"}
-          - {os: ubuntu-latest, python: "3.13"}
-          - {os: ubuntu-latest, python: "3.14"}
-          - {os: windows-latest, python: "3.14"}
-          - {os: macos-latest, python: "3.14"}
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     env:
       MPLBACKEND: Agg
       CI: "true"
