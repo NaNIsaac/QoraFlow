@@ -166,6 +166,7 @@ src/QoraFlow/
   gui/            Qt ROI selector
   config/         YAML config with pydantic validation
   datacheck/      raw-file size checks and MAD outlier detection
+  cohere.py       reader for Cohere phasing projects (data, configs, results, file hashes)
 scripts/          entry-point scripts (run from repo root)
 notebooks/        exploratory analysis notebooks
 examples/         synthetic data generators (README figure, dark frame)
