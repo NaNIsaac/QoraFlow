@@ -167,6 +167,7 @@ src/QoraFlow/
   config/         YAML config with pydantic validation
   datacheck/      raw-file size checks and MAD outlier detection
   cohere.py       reader for Cohere phasing projects (data, configs, results, file hashes)
+  euxfel.py       European XFEL AGIPD rocking scans summed per scan step and X-ray pulse
 scripts/          entry-point scripts (run from repo root)
 notebooks/        exploratory analysis notebooks
 examples/         synthetic data generators (README figure, dark frame)
