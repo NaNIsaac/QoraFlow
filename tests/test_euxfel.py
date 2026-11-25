@@ -138,8 +138,8 @@ def test_roi_and_round_trip(tmp_path):
         pumped=pumped,
         attrs={"run": 299, "delay_stage": 812.6},
     )
-    write_rocking_scan(tmp_path / "r0299_m15.h5", scan)
-    back = read_rocking_scan(tmp_path / "r0299_m15.h5")
+    write_rocking_scan(tmp_path / "scan.h5", scan)
+    back = read_rocking_scan(tmp_path / "scan.h5")
 
     assert back.sum.shape == (2, FEL.size, 2, 3)
     np.testing.assert_array_equal(back.sum, scan.sum)
