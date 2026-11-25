@@ -47,14 +47,18 @@ def agipd_asic_seams() -> npt.NDArray[np.bool_]:
 
 
 def match_pulse_offset(
-    frame_pulse_ids: npt.ArrayLike, frame_signal: npt.ArrayLike, fel_pulse_ids: npt.ArrayLike
+    frame_pulse_ids: npt.ArrayLike,
+    frame_signal: npt.ArrayLike,
+    fel_pulse_ids: npt.ArrayLike,
+    min_contrast: float = 5.0,
 ) -> tuple[int, float]:
     """Offset ``d`` such that the frames with ``pulseId == fel + d`` carry the X-ray signal.
 
     Every offset that places all X-ray pulses on recorded frames is tried; the one whose matched
     frames have the largest mean signal over the remaining frames wins. Returns the offset and
-    that contrast (matched mean minus unmatched mean, in units of the unmatched spread), so a
-    caller can refuse a weak match.
+    that contrast (matched mean minus unmatched mean, in units of the unmatched spread). A best
+    contrast below ``min_contrast`` raises ``ValueError``: on frames without diffraction any
+    offset fits about as well as any other.
     """
     frame_pulse_ids = np.asarray(frame_pulse_ids)
     frame_signal = np.asarray(frame_signal, dtype=float)
@@ -70,6 +74,11 @@ def match_pulse_offset(
             best = (int(offset), float(contrast))
     if best is None:
         raise ValueError("no offset puts every X-ray pulse on a recorded frame")
+    if best[1] < min_contrast:
+        raise ValueError(
+            f"X-ray pulses not found in the frames: best offset {best[0]} has contrast "
+            f"{best[1]:.2f} < {min_contrast}"
+        )
     return best
 
 
@@ -322,6 +331,21 @@ def extract_rocking_run(
         if train_ids.size:
             angles = np.array([theta_values[t] for t in train_ids.tolist()])
             scan_steps.append((float(angles.mean()), float(angles.std()), train_ids))
+    # The pulse offset is found on one train from each of up to 16 steps across the whole scan:
+    # steps at the edge of the rocking curve carry almost no signal.
+    frame_pulses, frame_signal = None, 0.0
+    for _, _, train_ids in scan_steps[:: max(1, len(scan_steps) // 16)]:
+        one = proc.select_trains(by_id[train_ids[:1]])
+        pulses = one[source, "image.pulseId"].ndarray().ravel()
+        if frame_pulses is not None and not np.array_equal(pulses, frame_pulses):
+            raise ValueError(f"run {run}: detector pulse ids change between trains")
+        frame_pulses = pulses
+        data = np.nan_to_num(one[source, "image.data"].ndarray())
+        frame_signal = frame_signal + np.where(
+            one[source, "image.mask"].ndarray() == 0, data, 0.0
+        ).sum(axis=(1, 2))
+    offset, contrast = match_pulse_offset(frame_pulses, frame_signal, fel_pulse_ids)
+
     if steps is not None:
         scan_steps = scan_steps[steps]
 
@@ -341,11 +365,6 @@ def extract_rocking_run(
                 )
             )
         return tuple(np.concatenate(column) for column in zip(*parts, strict=True))
-
-    first = proc.select_trains(by_id[scan_steps[0][2][:1]])
-    frame_pulses = first[source, "image.pulseId"].ndarray().ravel()
-    frame_signal = np.nansum(first[source, "image.data"].ndarray(), axis=(1, 2))
-    offset, contrast = match_pulse_offset(frame_pulses, frame_signal, fel_pulse_ids)
 
     xgm_key = raw[xgm]
     delay_values = raw[delay].ndarray()

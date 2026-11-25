@@ -37,6 +37,13 @@ def test_offset_found_from_the_frames_with_signal():
     assert contrast > 100
 
 
+def test_offset_refused_on_frames_without_signal():
+    noise = np.random.default_rng(1).normal(0, 300, CELLS.size)
+
+    with pytest.raises(ValueError, match="not found"):
+        match_pulse_offset(CELLS, noise, FEL)
+
+
 def test_offset_needs_every_pulse_on_a_frame():
     with pytest.raises(ValueError, match="no offset"):
         match_pulse_offset(np.arange(4), np.ones(4), np.array([0, 10]))
