@@ -283,14 +283,16 @@ def extract_rocking_run(
     xgm: tuple[str, str] = ("SA2_XTD1_XGM/XGM/DOOCS:output", "data.intensityTD"),
     roi: Roi | None = None,
     steps: slice | None = None,
+    trains_per_step: int | None = None,
     trains_per_read: int = 4,
     pumped: npt.ArrayLike | None = None,
 ) -> RockingScan:
     """Read one AGIPD module of one run from ``raw`` (control data only) and ``proc``.
 
     Only the raw files matching ``*DA*`` are opened, so detector raw data is never touched.
-    ``steps`` selects scan steps (for a short test). Default source names are those of the MID
-    instrument; pass others for another instrument.
+    ``steps`` selects scan steps and ``trains_per_step`` keeps the first trains of each, for a
+    short test. Theta per step is the mean and spread of the motor readback over its trains.
+    Default source names are those of the MID instrument; pass others for another instrument.
     """
     import extra_data
     from extra.components import OpticalLaserPulses, Scan, XrayPulses
@@ -315,11 +317,11 @@ def extract_rocking_run(
         zip(theta_key.train_id_coordinates().tolist(), theta_key.ndarray(), strict=True)
     )
     scan_steps = []
-    for position, train_ids in Scan(theta_key).steps:
-        train_ids = np.intersect1d(np.asarray(train_ids), proc.train_ids)
+    for _, train_ids in Scan(theta_key).steps:
+        train_ids = np.intersect1d(np.asarray(train_ids), proc.train_ids)[:trains_per_step]
         if train_ids.size:
             angles = np.array([theta_values[t] for t in train_ids.tolist()])
-            scan_steps.append((float(position), float(angles.std()), train_ids))
+            scan_steps.append((float(angles.mean()), float(angles.std()), train_ids))
     if steps is not None:
         scan_steps = scan_steps[steps]
 
