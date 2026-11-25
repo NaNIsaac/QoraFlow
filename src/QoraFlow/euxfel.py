@@ -293,7 +293,7 @@ def extract_rocking_run(
     roi: Roi | None = None,
     steps: slice | None = None,
     trains_per_step: int | None = None,
-    trains_per_read: int = 4,
+    trains_per_read: int = 32,
     pumped: npt.ArrayLike | None = None,
 ) -> RockingScan:
     """Read one AGIPD module of one run from ``raw`` (control data only) and ``proc``.
@@ -306,6 +306,7 @@ def extract_rocking_run(
     import extra_data
     from extra.components import OpticalLaserPulses, Scan, XrayPulses
     from extra_data import RunDirectory, by_id
+    from extra_data.components import AGIPD1M
 
     proposal_dir = Path(proposal_dir)
     raw = RunDirectory(proposal_dir / "raw" / f"r{run:04d}", include="*DA*")
@@ -349,22 +350,26 @@ def extract_rocking_run(
     if steps is not None:
         scan_steps = scan_steps[steps]
 
+    agipd = AGIPD1M(proc, detector_name=detector, modules=[module])
+
+    # Each frame is its own HDF5 chunk, so selecting the pulses before reading skips the
+    # frames without an X-ray pulse on disk, not only in memory.
     def read_step(train_ids, detector_pulse_ids):
+        pulses = by_id[np.asarray(detector_pulse_ids)]
         parts = []
-        for part in proc.select_trains(by_id[train_ids]).split_trains(
+        for part in agipd.select_trains(by_id[train_ids]).split_trains(
             trains_per_part=trains_per_read
         ):
-            pulses = part[source, "image.pulseId"].ndarray().ravel()
-            keep = np.isin(pulses, detector_pulse_ids)
             parts.append(
-                (
-                    part[source, "image.data"].ndarray()[keep],
-                    part[source, "image.mask"].ndarray()[keep],
-                    part[source, "image.trainId"].ndarray().ravel()[keep],
-                    pulses[keep],
+                tuple(
+                    part[key].select_pulses(pulses).ndarray()[0]
+                    for key in ("image.data", "image.mask", "image.trainId", "image.pulseId")
                 )
             )
-        return tuple(np.concatenate(column) for column in zip(*parts, strict=True))
+        data, mask, frame_trains, frame_pulses = (
+            np.concatenate(column) for column in zip(*parts, strict=True)
+        )
+        return data, mask, frame_trains.ravel(), frame_pulses.ravel()
 
     xgm_key = raw[xgm]
     delay_values = raw[delay].ndarray()
