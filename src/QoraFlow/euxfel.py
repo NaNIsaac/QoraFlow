@@ -305,6 +305,7 @@ def extract_rocking_run(
     trains_per_read: int = 32,
     pumped: npt.ArrayLike | None = None,
     pulse_offset: int | None = None,
+    offset_steps: int = 16,
 ) -> RockingScan:
     """Read one AGIPD module of one run from ``raw`` (control data only) and ``proc``.
 
@@ -312,6 +313,7 @@ def extract_rocking_run(
     ``steps`` selects scan steps and ``trains_per_step`` keeps the first trains of each, for a
     short test. Theta per step is the mean and spread of the motor readback over its trains.
     ``pulse_offset`` is the detector timing found on a brighter run; see :func:`match_pulse_offset`.
+    ``offset_steps`` is how many scan steps give one train each to that check; weak runs need more.
     Default source names are those of the MID instrument; pass others for another instrument.
     """
     import extra_data
@@ -343,10 +345,10 @@ def extract_rocking_run(
         if train_ids.size:
             angles = np.array([theta_values[t] for t in train_ids.tolist()])
             scan_steps.append((float(angles.mean()), float(angles.std()), train_ids))
-    # The pulse offset is found on one train from each of up to 16 steps across the whole scan:
+    # The pulse offset is found on one train from each of up to offset_steps steps across the scan:
     # steps at the edge of the rocking curve carry almost no signal.
     frame_pulses, frame_signal = None, 0.0
-    for _, _, train_ids in scan_steps[:: max(1, len(scan_steps) // 16)]:
+    for _, _, train_ids in scan_steps[:: max(1, len(scan_steps) // offset_steps)]:
         one = proc.select_trains(by_id[train_ids[:1]])
         pulses = one[source, "image.pulseId"].ndarray().ravel()
         if frame_pulses is not None and not np.array_equal(pulses, frame_pulses):
@@ -399,6 +401,7 @@ def extract_rocking_run(
         "delay_stage_std": float(np.std(delay_values)),
         "laser_pulse_ids_first_train": np.asarray(laser_first, dtype=np.int64),
         "pulse_offset_contrast": contrast,
+        "pulse_offset_steps": offset_steps,
         "extra_data_version": extra_data.__version__,
         "calibration_metadata_sha256": _sha256(calibration) if calibration.is_file() else "",
     }
