@@ -51,6 +51,7 @@ def match_pulse_offset(
     frame_signal: npt.ArrayLike,
     fel_pulse_ids: npt.ArrayLike,
     min_contrast: float = 5.0,
+    expected: int | None = None,
 ) -> tuple[int, float]:
     """Offset ``d`` such that the frames with ``pulseId == fel + d`` carry the X-ray signal.
 
@@ -58,7 +59,9 @@ def match_pulse_offset(
     frames have the largest mean signal over the remaining frames wins. Returns the offset and
     that contrast (matched mean minus unmatched mean, in units of the unmatched spread). A best
     contrast below ``min_contrast`` raises ``ValueError``: on frames without diffraction any
-    offset fits about as well as any other.
+    offset fits about as well as any other. With ``expected`` (an offset found on a brighter
+    run of the same setup) the best offset must equal it and the contrast is only reported, so
+    weak runs are checked against the known timing instead of refused.
     """
     frame_pulse_ids = np.asarray(frame_pulse_ids)
     frame_signal = np.asarray(frame_signal, dtype=float)
@@ -74,6 +77,12 @@ def match_pulse_offset(
             best = (int(offset), float(contrast))
     if best is None:
         raise ValueError("no offset puts every X-ray pulse on a recorded frame")
+    if expected is not None:
+        if best[0] != expected:
+            raise ValueError(
+                f"best offset {best[0]} (contrast {best[1]:.2f}) is not the expected {expected}"
+            )
+        return best
     if best[1] < min_contrast:
         raise ValueError(
             f"X-ray pulses not found in the frames: best offset {best[0]} has contrast "
@@ -295,12 +304,14 @@ def extract_rocking_run(
     trains_per_step: int | None = None,
     trains_per_read: int = 32,
     pumped: npt.ArrayLike | None = None,
+    pulse_offset: int | None = None,
 ) -> RockingScan:
     """Read one AGIPD module of one run from ``raw`` (control data only) and ``proc``.
 
     Only the raw files matching ``*DA*`` are opened, so detector raw data is never touched.
     ``steps`` selects scan steps and ``trains_per_step`` keeps the first trains of each, for a
     short test. Theta per step is the mean and spread of the motor readback over its trains.
+    ``pulse_offset`` is the detector timing found on a brighter run; see :func:`match_pulse_offset`.
     Default source names are those of the MID instrument; pass others for another instrument.
     """
     import extra_data
@@ -345,7 +356,9 @@ def extract_rocking_run(
         frame_signal = frame_signal + np.where(
             one[source, "image.mask"].ndarray() == 0, data, 0.0
         ).sum(axis=(1, 2))
-    offset, contrast = match_pulse_offset(frame_pulses, frame_signal, fel_pulse_ids)
+    offset, contrast = match_pulse_offset(
+        frame_pulses, frame_signal, fel_pulse_ids, expected=pulse_offset
+    )
 
     if steps is not None:
         scan_steps = scan_steps[steps]

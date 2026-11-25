@@ -148,3 +148,16 @@ def test_roi_and_round_trip(tmp_path):
     np.testing.assert_array_equal(back.train_xgm, scan.train_xgm)
     assert back.attrs["delay_stage"] == 812.6
     assert list(back.attrs["roi"]) == [1, 3, 1, 4]
+
+
+def test_expected_offset_accepts_a_weak_run_with_the_same_timing():
+    rng = np.random.default_rng(2)
+    signal = rng.normal(0, 300, CELLS.size)
+    signal[np.isin(CELLS, FEL + OFFSET)] += 600
+
+    offset, contrast = match_pulse_offset(CELLS, signal, FEL, expected=OFFSET)
+
+    assert offset == OFFSET
+    assert contrast < 5.0
+    with pytest.raises(ValueError, match="not the expected"):
+        match_pulse_offset(CELLS, signal, FEL, expected=OFFSET + 8)
