@@ -47,6 +47,25 @@ def test_tif_axes_come_back_in_cohere_order(tmp_path):
     np.testing.assert_array_equal(read_cohere_tif(tmp_path / "a.tif"), arr)
 
 
+def test_cohere_object_maps_to_its_conjugate_under_fftn(tmp_path):
+    rng = np.random.default_rng(3)
+    obj = np.zeros((8, 10, 12), complex)
+    obj[2:5, 3:7, 4:9] = rng.random((3, 4, 5)) * np.exp(1j * rng.random((3, 4, 5)))
+    # what Cohere fits: |ifftn(obj)| against fftshift(data), with data centre-origin
+    write_cohere_tif(
+        tmp_path / "phasing_data" / "data.tif", np.fft.fftshift(abs(np.fft.ifftn(obj)))
+    )
+
+    amplitude = load_cohere_project(tmp_path).amplitude
+
+    def fftn_model(x):
+        return abs(np.fft.fftshift(np.fft.fftn(np.fft.ifftshift(x)))) / x.size
+
+    centred = np.fft.fftshift(obj)
+    np.testing.assert_allclose(fftn_model(np.conj(centred)), amplitude, rtol=1e-5, atol=1e-7)
+    assert not np.allclose(fftn_model(centred), amplitude, rtol=1e-3, atol=1e-5)
+
+
 def test_config_literals_comments_and_tuples(tmp_path):
     conf = tmp_path / "config_rec"
     conf.write_text(

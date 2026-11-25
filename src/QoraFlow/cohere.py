@@ -14,10 +14,11 @@ and in the 4.5 series:
 - ``phasing_data/data.tif`` holds amplitudes: the standard preprocessing zeroes values at or
   below ``intensity_threshold``, takes the square root, crops or pads, moves the maximum to the
   array centre and bins. The data are centre-origin.
-- Phasing works on ``fftshift(data)``; the far field of an object is ``ifftn(object)``, the
-  opposite sign to ``fftn``. A reconstruction made with the ``fftn`` convention from the same
-  data is therefore the conjugate-flipped twin of Cohere's, which an ambiguity-aware comparison
-  resolves along with translation and global phase.
+- Phasing works on ``fftshift(data)``, so ``image.npy`` is corner-origin. The far field of an
+  object is ``ifftn(object)``, and ``|ifftn(x)|(q) = |fftn(x)|(-q) / N``: a reconstruction made
+  with the ``fftn`` convention from the same data corresponds to ``conj(x)``, or equally to
+  ``x(-r)``, not to ``x``. Conjugate ``image.npy`` before comparing it with such a
+  reconstruction; the twin, translation and global phase are then resolved as usual.
 - Zeros in ``data.tif`` are treated by Cohere as measured zeros; there is no mask.
 """
 
