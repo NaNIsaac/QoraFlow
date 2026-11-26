@@ -116,13 +116,15 @@ def filter_images_qbpm_by_linear_model(
 
 
 MIN_BAND_FRAMES = 3
+MAD_TO_SIGMA = 1.4826
 
 
 def linear_model_band_mask(
     images: npt.NDArray,
     qbpm: npt.NDArray,
     sigma: float,
-    band: Literal["parameter", "residual"] = "parameter",
+    band: Literal["parameter", "residual", "robust"] = "parameter",
+    iterations: int = 3,
 ) -> npt.NDArray[np.bool_]:
     """Frames whose total intensity lies within ``sigma`` of the linear fit of intensity on QBPM.
 
@@ -133,7 +135,10 @@ def linear_model_band_mask(
     the standard error of the fitted line, which narrows as 1/sqrt(N), so the kept fraction falls
     as the number of frames grows. ``band="residual"`` uses ``sigma`` times the standard deviation
     of the residuals about the fit (two fitted parameters), so the kept fraction does not depend
-    on N. With fewer than ``MIN_BAND_FRAMES`` frames a line with an error cannot be fitted and
+    on N. ``band="robust"`` scales the residuals by their median absolute deviation (times
+    1.4826, the standard deviation for normal residuals) and refits on the kept frames, up to
+    ``iterations`` times or until the kept set stops changing, so outliers widen neither the fit
+    nor the band; ``sigma=3`` is the usual choice there. With fewer than ``MIN_BAND_FRAMES`` frames a line with an error cannot be fitted and
     every frame is kept.
     """
     intensities = images.sum(axis=(1, 2))
@@ -148,8 +153,20 @@ def linear_model_band_mask(
         fit = slope * qbpm + intercept
         half_width = sigma * np.std(intensities - fit, ddof=2)
         lower_bound, upper_bound = fit - half_width, fit + half_width
+    elif band == "robust":
+        kept = np.ones(intensities.size, dtype=bool)
+        for _ in range(iterations):
+            slope, intercept = np.polyfit(qbpm[kept], intensities[kept], 1)
+            residuals = intensities - (slope * qbpm + intercept)
+            centre = np.median(residuals[kept])
+            scale = MAD_TO_SIGMA * np.median(np.abs(residuals[kept] - centre))
+            new = np.abs(residuals - centre) <= sigma * scale
+            if scale == 0 or new.sum() < MIN_BAND_FRAMES or np.array_equal(new, kept):
+                break
+            kept = new
+        return kept
     else:
-        raise ValueError(f"band must be 'parameter' or 'residual', not {band!r}")
+        raise ValueError(f"band must be 'parameter', 'residual' or 'robust', not {band!r}")
     return np.logical_and(intensities >= lower_bound, intensities <= upper_bound)
 
 
