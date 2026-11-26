@@ -5,6 +5,7 @@ from QoraFlow.euxfel import (
     accumulate_pulses,
     agipd_asic_seams,
     build_rocking_scan,
+    build_rocking_scans,
     frame_pulse_index,
     match_pulse_offset,
     read_rocking_scan,
@@ -271,3 +272,79 @@ def test_frame_filter_with_band_mask_keeps_pulses_with_few_frames():
 
     np.testing.assert_array_equal(scan.frames_kept, scan.frames_total)
     np.testing.assert_array_equal(scan.frames_total, np.full((2, FEL.size), 2))
+
+
+def test_robust_band_drops_outliers_the_residual_band_keeps():
+    from QoraFlow.preprocessor.generic_preprocessors import linear_model_band_mask
+
+    rng = np.random.default_rng(4)
+    n = 200
+    qbpm = rng.uniform(0.8, 1.2, n)
+    intensity = 100 * qbpm + rng.normal(0, 1, n)
+    outliers = np.arange(n) < 20
+    intensity[outliers] += rng.choice([-1, 1], 20) * rng.uniform(8, 12, 20)
+    images = intensity[:, None, None]
+
+    robust = linear_model_band_mask(images, qbpm, sigma=3, band="robust")
+    residual = linear_model_band_mask(images, qbpm, sigma=3, band="residual")
+
+    assert not robust[outliers].any()
+    assert robust[~outliers].mean() > 0.95
+    assert residual[outliers].sum() > robust[outliers].sum()
+
+
+def test_robust_band_keeps_all_with_identical_residuals():
+    from QoraFlow.preprocessor.generic_preprocessors import linear_model_band_mask
+
+    qbpm = np.arange(1.0, 7.0)
+    mask = linear_model_band_mask((2 * qbpm)[:, None, None], qbpm, sigma=3, band="robust")
+    assert mask.all()
+
+
+def test_several_filters_from_one_read():
+    steps, read_step, xgm = fake_run()
+    reads = []
+
+    def counting_read(train_ids, pulse_ids):
+        reads.append(train_ids[0])
+        return read_step(train_ids, pulse_ids)
+
+    def drop_first_train(images, frame_xgm):
+        return frame_xgm > frame_xgm.min()
+
+    common = {
+        "xgm_train_ids": np.arange(100, 106),
+        "xgm": xgm,
+        "seams": np.zeros((4, 6), bool),
+        "attrs": {"run": 299},
+    }
+    scans = build_rocking_scans(
+        steps,
+        counting_read,
+        FEL,
+        OFFSET,
+        frame_filters={"raw": None, "drop": drop_first_train},
+        **common,
+    )
+
+    assert len(reads) == len(steps)
+    raw = build_rocking_scan(steps, read_step, FEL, OFFSET, **common)
+    drop = build_rocking_scan(
+        steps, read_step, FEL, OFFSET, frame_filter=drop_first_train, **common
+    )
+    for name, single in (("raw", raw), ("drop", drop)):
+        scan = scans[name]
+        np.testing.assert_array_equal(scan.sum, single.sum)
+        np.testing.assert_array_equal(scan.count, single.count)
+        np.testing.assert_array_equal(scan.xgm_sum, single.xgm_sum)
+        np.testing.assert_array_equal(scan.train_id, single.train_id)
+        assert scan.attrs["frame_filter_name"] == name and scan.attrs["run"] == 299
+    assert scans["raw"].frames_kept is None and "frame_filter" not in scans["raw"].attrs
+    np.testing.assert_array_equal(scans["drop"].frames_kept, drop.frames_kept)
+    assert "frame_filter_name" not in drop.attrs
+
+
+def test_several_filters_need_at_least_one():
+    steps, read_step, _ = fake_run()
+    with pytest.raises(ValueError, match="empty"):
+        build_rocking_scans(steps, read_step, FEL, OFFSET, frame_filters={})

@@ -18,12 +18,12 @@ summed over the same trains and stored, not applied. Which pulses were pumped is
 when it is given; it is not derived from the laser bunch pattern, whose position relative to
 the X-ray pattern is a timing convention to be checked against the data.
 
-The pure functions work on numpy arrays. :func:`extract_rocking_run` reads a run with
+The pure functions work on numpy arrays. :func:`extract_rocking_run` and :func:`extract_rocking_runs` read a run with
 ``extra_data`` and ``extra`` (European XFEL software, imported only there).
 """
 
 import hashlib
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -193,9 +193,61 @@ def build_rocking_scan(
     before they are averaged: it gets the frames of one pulse in one step (n, y, x; cropped to
     ``roi``, invalid pixels 0) with their XGM values (n,) and returns a boolean mask (n,), for
     example ``partial(linear_model_band_mask, sigma=2)``. Frames without an XGM value are left
-    out when a filter is given.
+    out when a filter is given. For several filters in one read, see :func:`build_rocking_scans`.
     """
-    if frame_filter is not None and xgm_train_ids is None:
+    return build_rocking_scans(
+        steps,
+        read_step,
+        fel_pulse_ids,
+        offset,
+        frame_filters={"": frame_filter},
+        xgm_train_ids=xgm_train_ids,
+        xgm=xgm,
+        roi=roi,
+        seams=seams,
+        pumped=pumped,
+        attrs=attrs,
+    )[""]
+
+
+@dataclass
+class _Accumulator:
+    """Per-step results of one frame filter while the steps are read."""
+
+    frame_filter: FrameFilter | None
+    sums: list = field(default_factory=list)
+    counts: list = field(default_factory=list)
+    xgm_sums: list = field(default_factory=list)
+    frames_total: list = field(default_factory=list)
+    frames_kept: list = field(default_factory=list)
+
+
+def build_rocking_scans(
+    steps: Sequence[tuple[float, float, npt.ArrayLike]],
+    read_step: StepReader,
+    fel_pulse_ids: npt.ArrayLike,
+    offset: int,
+    *,
+    frame_filters: Mapping[str, FrameFilter | None],
+    xgm_train_ids: npt.ArrayLike | None = None,
+    xgm: npt.ArrayLike | None = None,
+    roi: Roi | None = None,
+    seams: npt.NDArray[np.bool_] | None = None,
+    pumped: npt.ArrayLike | None = None,
+    attrs: dict[str, Any] | None = None,
+) -> dict[str, RockingScan]:
+    """One rocking scan per named frame filter, all from a single read of the frames.
+
+    As :func:`build_rocking_scan`, with ``frame_filters`` mapping a name to a filter, or to
+    ``None`` for the unfiltered scan. Every step is read once and each filter's frames are summed
+    apart, so reading cost does not grow with the number of filters. The scans share the train
+    record and the mask; each has its own sums, counts, XGM sums and frame counts, and a named
+    scan records its name in ``attrs["frame_filter_name"]``.
+    """
+    if not frame_filters:
+        raise ValueError("frame_filters is empty")
+    filtering = any(f is not None for f in frame_filters.values())
+    if filtering and xgm_train_ids is None:
         raise ValueError("frame_filter needs the XGM (xgm_train_ids and xgm)")
     fel_pulse_ids = np.asarray(fel_pulse_ids, dtype=np.int64)
     if np.any(np.diff(fel_pulse_ids) <= 0):
@@ -208,7 +260,8 @@ def build_rocking_scan(
         xgm_rows = np.asarray(xgm, dtype=np.float32)[:, :n_pulses]
         xgm_lookup = dict(zip(np.asarray(xgm_train_ids).tolist(), xgm_rows, strict=True))
 
-    sums, counts, xgm_sums, n_trains, frames_total, frames_kept = [], [], [], [], [], []
+    results = {name: _Accumulator(f) for name, f in frame_filters.items()}
+    n_trains: list[int] = []
     train_records: list[tuple[int, int]] = []
     calibration_bits = None
     for step, (_, _, train_ids) in enumerate(steps):
@@ -218,7 +271,8 @@ def build_rocking_scan(
         data, mask = data[keep], mask[keep]
         valid = _crop(valid_pixels(data, mask, seams), roi)
         frames, pulses = _crop(data, roi), pulse_index[keep]
-        if frame_filter is not None:
+        used = np.unique(np.asarray(frame_trains)[keep])
+        if filtering:
             trains = np.asarray(frame_trains)[keep].tolist()
             nan_row = np.full(n_pulses, np.nan)
             frame_xgm = np.array(
@@ -227,61 +281,77 @@ def build_rocking_scan(
                     for t, p in zip(trains, pulses.tolist(), strict=True)
                 ]
             )
-            chosen = np.zeros(pulses.size, bool)
-            for pulse in range(n_pulses):
-                take = np.flatnonzero((pulses == pulse) & np.isfinite(frame_xgm))
-                if take.size:
-                    images = np.where(valid[take], frames[take], 0.0)
-                    chosen[take] = np.asarray(frame_filter(images, frame_xgm[take]), dtype=bool)
-            valid = valid & chosen[:, None, None]
-            frames_total.append(np.bincount(pulses, minlength=n_pulses))
-            frames_kept.append(np.bincount(pulses[chosen], minlength=n_pulses))
-            xgm_sums.append(
-                np.bincount(pulses[chosen], weights=frame_xgm[chosen], minlength=n_pulses)
-            )
-        total, count = accumulate_pulses(frames, valid, pulses, n_pulses)
-        if count.max(initial=0) > np.iinfo(np.uint16).max:
-            raise OverflowError(f"step {step}: more than 65535 frames in one pixel count")
+            by_pulse = [
+                np.flatnonzero((pulses == pulse) & np.isfinite(frame_xgm))
+                for pulse in range(n_pulses)
+            ]
+            masked = np.where(valid, frames, 0.0)
+        for acc in results.values():
+            step_valid = valid
+            if acc.frame_filter is None:
+                step_xgm = [xgm_lookup[t] for t in used.tolist() if t in xgm_lookup]
+                acc.xgm_sums.append(
+                    np.sum(step_xgm, axis=0) if step_xgm else np.full(n_pulses, np.nan)
+                )
+            else:
+                chosen = np.zeros(pulses.size, bool)
+                for take in by_pulse:
+                    if take.size:
+                        chosen[take] = np.asarray(
+                            acc.frame_filter(masked[take], frame_xgm[take]), dtype=bool
+                        )
+                step_valid = valid & chosen[:, None, None]
+                acc.frames_total.append(np.bincount(pulses, minlength=n_pulses))
+                acc.frames_kept.append(np.bincount(pulses[chosen], minlength=n_pulses))
+                acc.xgm_sums.append(
+                    np.bincount(pulses[chosen], weights=frame_xgm[chosen], minlength=n_pulses)
+                )
+            total, count = accumulate_pulses(frames, step_valid, pulses, n_pulses)
+            if count.max(initial=0) > np.iinfo(np.uint16).max:
+                raise OverflowError(f"step {step}: more than 65535 frames in one pixel count")
+            acc.sums.append(total.astype(np.float32))
+            acc.counts.append(count.astype(np.uint16))
         bits = np.bitwise_or.reduce(_crop(mask, roi).astype(np.uint32), axis=0)
         calibration_bits = bits if calibration_bits is None else calibration_bits | bits
-
-        used = np.unique(np.asarray(frame_trains)[keep])
         train_records += [(int(t), step) for t in used]
-        if frame_filter is None:
-            step_xgm = [xgm_lookup[t] for t in used.tolist() if t in xgm_lookup]
-            xgm_sums.append(np.sum(step_xgm, axis=0) if step_xgm else np.full(n_pulses, np.nan))
-        sums.append(total.astype(np.float32))
-        counts.append(count.astype(np.uint16))
         n_trains.append(used.size)
 
     train_id = np.array([t for t, _ in train_records], dtype=np.uint64)
     nan_row = np.full(n_pulses, np.nan, dtype=np.float32)
-    return RockingScan(
-        sum=np.stack(sums),
-        count=np.stack(counts),
-        xgm_sum=np.array(xgm_sums, dtype=np.float64),
-        n_trains=np.array(n_trains, dtype=np.int64),
-        theta=np.array([s[0] for s in steps], dtype=np.float64),
-        theta_std=np.array([s[1] for s in steps], dtype=np.float64),
-        fel_pulse_id=fel_pulse_ids,
-        detector_pulse_id=detector_ids,
-        train_id=train_id,
-        train_step=np.array([s for _, s in train_records], dtype=np.int64),
-        train_xgm=np.array(
+    shared = {
+        "n_trains": np.array(n_trains, dtype=np.int64),
+        "theta": np.array([s[0] for s in steps], dtype=np.float64),
+        "theta_std": np.array([s[1] for s in steps], dtype=np.float64),
+        "fel_pulse_id": fel_pulse_ids,
+        "detector_pulse_id": detector_ids,
+        "train_id": train_id,
+        "train_step": np.array([s for _, s in train_records], dtype=np.int64),
+        "train_xgm": np.array(
             [xgm_lookup.get(int(t), nan_row) for t in train_id], dtype=np.float32
         ).reshape(-1, n_pulses),
-        seams=_crop(seams, roi),
-        calibration_bits=calibration_bits,
-        pumped=None if pumped is None else np.asarray(pumped, dtype=bool),
-        frames_total=np.array(frames_total, dtype=np.int64) if frame_filter is not None else None,
-        frames_kept=np.array(frames_kept, dtype=np.int64) if frame_filter is not None else None,
-        attrs={
-            "pulse_offset": offset,
-            "roi": list(roi) if roi else [],
-            **({"frame_filter": repr(frame_filter)} if frame_filter is not None else {}),
-            **(attrs or {}),
-        },
-    )
+        "seams": _crop(seams, roi),
+        "calibration_bits": calibration_bits,
+        "pumped": None if pumped is None else np.asarray(pumped, dtype=bool),
+    }
+    scans = {}
+    for name, acc in results.items():
+        filtered = acc.frame_filter is not None
+        scans[name] = RockingScan(
+            sum=np.stack(acc.sums),
+            count=np.stack(acc.counts),
+            xgm_sum=np.array(acc.xgm_sums, dtype=np.float64),
+            frames_total=np.array(acc.frames_total, dtype=np.int64) if filtered else None,
+            frames_kept=np.array(acc.frames_kept, dtype=np.int64) if filtered else None,
+            attrs={
+                "pulse_offset": offset,
+                "roi": list(roi) if roi else [],
+                **({"frame_filter": repr(acc.frame_filter)} if filtered else {}),
+                **({"frame_filter_name": name} if name else {}),
+                **(attrs or {}),
+            },
+            **shared,
+        )
+    return scans
 
 
 def write_rocking_scan(path: Path | str, scan: RockingScan) -> None:
@@ -344,6 +414,24 @@ def extract_rocking_run(
     run: int,
     module: int,
     *,
+    frame_filter: FrameFilter | None = None,
+    **options: Any,
+) -> RockingScan:
+    """Read one AGIPD module of one run; see :func:`extract_rocking_runs` for the options.
+
+    ``frame_filter`` drops frames before the per-step sums; see :func:`build_rocking_scan`.
+    """
+    return extract_rocking_runs(
+        proposal_dir, run, module, frame_filters={"": frame_filter}, **options
+    )[""]
+
+
+def extract_rocking_runs(
+    proposal_dir: Path | str,
+    run: int,
+    module: int,
+    *,
+    frame_filters: Mapping[str, FrameFilter | None],
     detector: str = "MID_DET_AGIPD1M-1",
     theta: tuple[str, str] = ("MID_EXP_SAM/MDL/DATA_SELECTOR", "midExpSamMotorSsry.actualPosition"),
     delay: tuple[str, str] = ("MID_LAS_COM/CTRL/PPL_PHASE_SHIFTER", "actualPosition"),
@@ -355,8 +443,7 @@ def extract_rocking_run(
     pumped: npt.ArrayLike | None = None,
     pulse_offset: int | None = None,
     offset_steps: int = 16,
-    frame_filter: FrameFilter | None = None,
-) -> RockingScan:
+) -> dict[str, RockingScan]:
     """Read one AGIPD module of one run from ``raw`` (control data only) and ``proc``.
 
     Only the raw files matching ``*DA*`` are opened, so detector raw data is never touched.
@@ -364,8 +451,9 @@ def extract_rocking_run(
     short test. Theta per step is the mean and spread of the motor readback over its trains.
     ``pulse_offset`` is the detector timing found on a brighter run; see :func:`match_pulse_offset`.
     ``offset_steps`` is how many scan steps give one train each to that check; weak runs need more.
-    ``frame_filter`` drops frames before the per-step sums; see :func:`build_rocking_scan`.
-    Default source names are those of the MID instrument; pass others for another instrument.
+    ``frame_filters`` maps a name to a frame filter, or to ``None`` for the unfiltered scan; the
+    frames are read once for all of them and one scan is returned per name, see
+    :func:`build_rocking_scans`. Default source names are those of the MID instrument; pass others for another instrument.
     """
     import extra_data
     from extra.components import OpticalLaserPulses, Scan, XrayPulses
@@ -456,15 +544,15 @@ def extract_rocking_run(
         "extra_data_version": extra_data.__version__,
         "calibration_metadata_sha256": _sha256(calibration) if calibration.is_file() else "",
     }
-    return build_rocking_scan(
+    return build_rocking_scans(
         scan_steps,
         read_step,
         fel_pulse_ids,
         offset,
+        frame_filters=frame_filters,
         xgm_train_ids=xgm_key.train_id_coordinates(),
         xgm=xgm_key.ndarray(),
         roi=roi,
         pumped=pumped,
         attrs=attrs,
-        frame_filter=frame_filter,
     )
