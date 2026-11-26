@@ -105,6 +105,20 @@ class NpzSaverStrategy(SaverStrategy):
         self._file = npz_file
 
 
+# ImageJ stores hyperstacks in TZCYX order; a 3D array is read as a stack of images.
+IMAGEJ_AXES = {2: "YX", 3: "ZYX", 4: "TZYX", 5: "TZCYX"}
+IMAGEJ_DTYPES = (np.uint8, np.uint16, np.float32)
+
+
+def imagej_compatible(images: npt.NDArray) -> npt.NDArray:
+    """Return the array in a data type the ImageJ tif format can hold (others become float32)."""
+    if images.ndim not in IMAGEJ_AXES:
+        raise ValueError(f"ImageJ tif holds 2 to 5 dimensions, got shape {images.shape}")
+    if images.dtype in IMAGEJ_DTYPES:
+        return images
+    return images.astype(np.float32)
+
+
 class TifSaverStrategy(SaverStrategy):
     """Saves arrays from the data dictionary as individual .tif files."""
 
@@ -132,13 +146,11 @@ class TifSaverStrategy(SaverStrategy):
             tif_file: Path = make_run_scan_dir(processed_dir, run_n, scan_n, sub_path=file_name)
 
             if isinstance(val, np.ndarray):
-                # ImageJ needs the axes to match the array: a stack of images is (Z, Y, X).
-                metadata = {"spacing": 0.5, "unit": "um", "axes": "ZYX"[-val.ndim :]}
                 tifffile.imwrite(
                     tif_file,
-                    val,
+                    imagej_compatible(val),
                     imagej=True,
-                    metadata=metadata,
+                    metadata={"spacing": 0.5, "unit": "um", "axes": IMAGEJ_AXES[val.ndim]},
                 )
                 self._file = tif_file
 
