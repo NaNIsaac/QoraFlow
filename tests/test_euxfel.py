@@ -215,3 +215,59 @@ def test_band_mask_matches_the_band_filter():
     assert not mask[:5].any()
     np.testing.assert_array_equal(kept_images, images[mask])
     np.testing.assert_array_equal(kept_qbpm, qbpm[mask])
+
+
+@pytest.mark.parametrize("n", [0, 1, 2])
+@pytest.mark.parametrize("band", ["parameter", "residual"])
+def test_band_mask_keeps_every_frame_below_three(n, band):
+    from QoraFlow.preprocessor.generic_preprocessors import linear_model_band_mask
+
+    images = np.arange(n * 4, dtype=float).reshape(n, 2, 2)
+    mask = linear_model_band_mask(images, np.arange(1.0, n + 1), sigma=2, band=band)
+    assert mask.dtype == bool and mask.all() and mask.size == n
+
+
+def test_residual_band_keeps_a_fraction_independent_of_n():
+    from QoraFlow.preprocessor.generic_preprocessors import linear_model_band_mask
+
+    rng = np.random.default_rng(3)
+    kept = {}
+    for n in (48, 2000):
+        qbpm = rng.uniform(-0.5, 0.5, n)
+        images = (qbpm + rng.normal(0, 0.05, n))[:, None, None]
+        kept[n] = {
+            band: linear_model_band_mask(images, qbpm, sigma=2, band=band).mean()
+            for band in ("parameter", "residual")
+        }
+    assert 0.9 < kept[48]["residual"] and 0.9 < kept[2000]["residual"]
+    assert kept[2000]["parameter"] < kept[48]["parameter"] < kept[48]["residual"]
+
+
+def test_band_mask_rejects_an_unknown_band():
+    from QoraFlow.preprocessor.generic_preprocessors import linear_model_band_mask
+
+    with pytest.raises(ValueError, match="band must be"):
+        linear_model_band_mask(np.ones((4, 1, 1)), np.arange(4.0), sigma=2, band="prediction")
+
+
+def test_frame_filter_with_band_mask_keeps_pulses_with_few_frames():
+    from functools import partial
+
+    from QoraFlow.preprocessor.generic_preprocessors import linear_model_band_mask
+
+    steps, read_step, xgm = fake_run()
+    steps = [(theta, delay, trains[:2]) for theta, delay, trains in steps]
+
+    scan = build_rocking_scan(
+        steps,
+        read_step,
+        FEL,
+        OFFSET,
+        xgm_train_ids=np.arange(100, 106),
+        xgm=xgm,
+        seams=np.zeros((4, 6), bool),
+        frame_filter=partial(linear_model_band_mask, sigma=2),
+    )
+
+    np.testing.assert_array_equal(scan.frames_kept, scan.frames_total)
+    np.testing.assert_array_equal(scan.frames_total, np.full((2, FEL.size), 2))

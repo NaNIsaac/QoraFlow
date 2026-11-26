@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -42,11 +43,13 @@ def get_linear_regression_confidence_bounds(
     Statistical Explanation:
     This function applies the principle of propagation of uncertainty. It fits a linear
     regression model y = mx + b, calculates the standard errors of the model parameters
-    m and b, and uses these to generate prediction intervals for identifying outliers.
+    m and b, and uses these to generate a band about the fitted line for identifying outliers.
 
-    The prediction interval is calculated using the formula:
+    The band is calculated using the formula:
     y ± sqrt((m_err * x)^2 + b_err^2) * sigma
-    where m_err and b_err are the standard errors of m and b respectively.
+    where m_err and b_err are the standard errors of m and b respectively. This is the uncertainty
+    of the fitted line, not the scatter of the points about it (a prediction interval): it narrows
+    as 1/sqrt(N), so for large N most points lie outside it.
 
     Parameters:
     y (NDArray): Dependent variable data. Shape: (N,)
@@ -112,14 +115,41 @@ def filter_images_qbpm_by_linear_model(
     return images[mask], qbpm[mask]
 
 
-def linear_model_band_mask(images: npt.NDArray, qbpm: npt.NDArray, sigma: float) -> npt.NDArray:
+MIN_BAND_FRAMES = 3
+
+
+def linear_model_band_mask(
+    images: npt.NDArray,
+    qbpm: npt.NDArray,
+    sigma: float,
+    band: Literal["parameter", "residual"] = "parameter",
+) -> npt.NDArray[np.bool_]:
     """Frames whose total intensity lies within ``sigma`` of the linear fit of intensity on QBPM.
 
     The mask behind :func:`filter_images_qbpm_by_linear_model`, for callers that need to know
     which frames were kept (for example a frame filter in ``QoraFlow.euxfel``).
+
+    ``band="parameter"`` (default) is the band of :func:`get_linear_regression_confidence_bounds`:
+    the standard error of the fitted line, which narrows as 1/sqrt(N), so the kept fraction falls
+    as the number of frames grows. ``band="residual"`` uses ``sigma`` times the standard deviation
+    of the residuals about the fit (two fitted parameters), so the kept fraction does not depend
+    on N. With fewer than ``MIN_BAND_FRAMES`` frames a line with an error cannot be fitted and
+    every frame is kept.
     """
     intensities = images.sum(axis=(1, 2))
-    lower_bound, upper_bound, _ = get_linear_regression_confidence_bounds(intensities, qbpm, sigma)
+    if intensities.size < MIN_BAND_FRAMES:
+        return np.ones(intensities.size, dtype=bool)
+    if band == "parameter":
+        lower_bound, upper_bound, _ = get_linear_regression_confidence_bounds(
+            intensities, qbpm, sigma
+        )
+    elif band == "residual":
+        slope, intercept = np.polyfit(qbpm, intensities, 1)
+        fit = slope * qbpm + intercept
+        half_width = sigma * np.std(intensities - fit, ddof=2)
+        lower_bound, upper_bound = fit - half_width, fit + half_width
+    else:
+        raise ValueError(f"band must be 'parameter' or 'residual', not {band!r}")
     return np.logical_and(intensities >= lower_bound, intensities <= upper_bound)
 
 
