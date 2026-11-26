@@ -108,11 +108,19 @@ def filter_images_qbpm_by_linear_model(
     This method uses the `get_linear_regression_confidence_lower_upper_bound` function to generate the mask based
     on the linear regression model and confidence interval.
     """
-    intensites = images.sum(axis=(1, 2))
-    lower_bound, upper_bound, _ = get_linear_regression_confidence_bounds(intensites, qbpm, sigma)
-    mask = np.logical_and(intensites >= lower_bound, intensites <= upper_bound)
-
+    mask = linear_model_band_mask(images, qbpm, sigma)
     return images[mask], qbpm[mask]
+
+
+def linear_model_band_mask(images: npt.NDArray, qbpm: npt.NDArray, sigma: float) -> npt.NDArray:
+    """Frames whose total intensity lies within ``sigma`` of the linear fit of intensity on QBPM.
+
+    The mask behind :func:`filter_images_qbpm_by_linear_model`, for callers that need to know
+    which frames were kept (for example a frame filter in ``QoraFlow.euxfel``).
+    """
+    intensities = images.sum(axis=(1, 2))
+    lower_bound, upper_bound, _ = get_linear_regression_confidence_bounds(intensities, qbpm, sigma)
+    return np.logical_and(intensities >= lower_bound, intensities <= upper_bound)
 
 
 def div_images_by_qbpm(images: npt.NDArray, qbpm: npt.NDArray) -> npt.NDArray:
