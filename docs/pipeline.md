@@ -85,7 +85,8 @@ For each scan and each preprocessor (`LND`, `raw`):
 
 ## 6. ROI analysis: `DataAnalyzer` and `scripts/analyzing_main.py`
 
-`DataAnalyzer(npz_file)` loads the `pon`, `poff` and `delay` arrays (negative values set to 0).
+`DataAnalyzer(npz_file, clip_negative=True)` loads the `pon`, `poff` and `delay` arrays and sets
+negative values to 0 unless `clip_negative=False`.
 `analyze_by_roi(roi, background=None, edge_width=3)` returns a table indexed by delay with, for
 each of `poff` and `pon`:
 
@@ -100,6 +101,14 @@ pixels of the ROI (their median, or a least-squares plane through them) from eac
 before the centre of mass is taken; the intensities are not affected. The
 [first run](index.md#first-run) shows what it changes on synthetic data, and the docstring of
 `edge_background` says when each estimate fails.
+
+Clipping keeps the positive half of zero-mean background noise. That floor pulls the centre of
+mass towards the ROI centre, and more for the noisier state, so with clipping a pump off frame
+from one pulse and a pump on mean of many pulses can differ by pixels where the peak does not
+move. For centre-of-mass work on noisy images load with `clip_negative=False` and keep the ROI
+small around the peak. `center_of_mass(roi, state)` returns the ROI centre of mass of every image
+of one state in pixels of the full image, not relative to the first delay, so runs measured with
+different ROIs can be compared.
 
 `analyzing_main.py` reads scan 1 of each run from `run=XXXX_scan=0001_LND.npz` (the `suffix` in
 the script selects `raw` instead), opens a Qt window to pick the ROI, calls `analyze_by_roi`
