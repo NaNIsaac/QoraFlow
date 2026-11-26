@@ -46,13 +46,17 @@ class DataAnalyzer:
     Args:
         file (str): The path to the file containing the data.
         angle (int, optional): The angle to rotate the images. Defaults to 0.
+        clip_negative (bool, optional): Set negative pixel values to 0 on loading. Defaults to
+            True. Clipping keeps the positive half of zero-mean background noise, which pulls the
+            ROI centre of mass towards the ROI centre, more for the noisier state; use False for
+            centre-of-mass work on noisy or background-subtracted images (QoraFlow#56).
 
     Raises:
         FileNotFoundError: If the file does not exist.
         ValueError: If the file does not contain the required keys.
     """
 
-    def __init__(self, file: str | Path, angle: int = 0) -> None:
+    def __init__(self, file: str | Path, angle: int = 0, clip_negative: bool = True) -> None:
         file = Path(file)
         if not file.exists():
             raise FileNotFoundError(f"The file {file} does not exist.")
@@ -81,7 +85,7 @@ class DataAnalyzer:
                 return None
             if angle:
                 images = rotate(images, angle, axes=(1, 2), reshape=False)
-            return np.maximum(0, images)
+            return np.maximum(0, images) if clip_negative else images
 
         self.poff_images: npt.NDArray | None = prepare(states.get("poff"))
         self.pon_images: npt.NDArray | None = prepare(states.get("pon"))
@@ -183,6 +187,25 @@ class DataAnalyzer:
         roi_images = roi_rect.slice(images)
 
         return roi_images.mean(axis=(1, 2))
+
+    def center_of_mass(
+        self,
+        roi_rect: RoiRectangle,
+        state: Literal["poff", "pon"],
+        background: Background = None,
+        edge_width: int = 3,
+    ) -> tuple[npt.NDArray, npt.NDArray]:
+        """ROI centre of mass (x, y) of every image of one state, in pixels of the full image.
+
+        Unlike ``analyze_by_roi`` the values are absolute, not relative to the first delay, so
+        images whose ROIs differ (one ROI per call) can be compared. ``background`` and
+        ``edge_width`` as in ``analyze_by_roi``.
+        """
+        images = getattr(self, f"{state}_images")
+        if images is None:
+            raise ValueError(f"this file has no {state!r} images")
+        com_x, com_y = self._roi_center_of_masses(roi_rect, images, background, edge_width)
+        return com_x + roi_rect.x1, com_y + roi_rect.y1
 
     def analyze_by_roi(
         self, roi_rect: RoiRectangle, background: Background = None, edge_width: int = 3
