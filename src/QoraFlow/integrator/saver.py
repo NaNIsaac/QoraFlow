@@ -131,13 +131,9 @@ class TifSaverStrategy(SaverStrategy):
 
             tif_file: Path = make_run_scan_dir(processed_dir, run_n, scan_n, sub_path=file_name)
 
-            # Metadata for ImageJ
-            metadata = {"spacing": 0.5, "unit": "um", "axes": "YX"}
-
-            # Ensure proper float32 casting if specific to your pipeline,
-            # otherwise save raw. Added check to ensure valid array.
             if isinstance(val, np.ndarray):
-                # If 3D, ImageJ expects (Z, Y, X) usually.
+                # ImageJ needs the axes to match the array: a stack of images is (Z, Y, X).
+                metadata = {"spacing": 0.5, "unit": "um", "axes": "ZYX"[-val.ndim :]}
                 tifffile.imwrite(
                     tif_file,
                     val,
