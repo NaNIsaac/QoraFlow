@@ -161,3 +161,113 @@ def test_expected_offset_accepts_a_weak_run_with_the_same_timing():
     assert contrast < 5.0
     with pytest.raises(ValueError, match="not the expected"):
         match_pulse_offset(CELLS, signal, FEL, expected=OFFSET + 8)
+
+
+def test_frame_filter_drops_frames_before_the_sums(tmp_path):
+    steps, read_step, xgm = fake_run()
+
+    def drop_first_train(images, frame_xgm):
+        # XGM rises with the train in fake_run, so the lowest value is the step's first train
+        return frame_xgm > frame_xgm.min()
+
+    scan = build_rocking_scan(
+        steps,
+        read_step,
+        FEL,
+        OFFSET,
+        xgm_train_ids=np.arange(100, 106),
+        xgm=xgm,
+        seams=np.zeros((4, 6), bool),
+        frame_filter=drop_first_train,
+    )
+
+    np.testing.assert_array_equal(scan.frames_total, np.full((2, FEL.size), 3))
+    np.testing.assert_array_equal(scan.frames_kept, np.full((2, FEL.size), 2))
+    assert scan.count[0, 0, 1, 2] == 2
+    assert scan.count[0, 0, 1, 1] == 2  # pixel masked only in the dropped first train
+    assert scan.mean[1, 4, 1, 2] == pytest.approx(41.0)
+    np.testing.assert_allclose(scan.xgm_sum[1], xgm[4:6].sum(axis=0))
+    assert "drop_first_train" in scan.attrs["frame_filter"]
+    write_rocking_scan(tmp_path / "scan.h5", scan)
+    back = read_rocking_scan(tmp_path / "scan.h5")
+    np.testing.assert_array_equal(back.frames_kept, scan.frames_kept)
+    np.testing.assert_array_equal(back.frames_total, scan.frames_total)
+
+
+def test_frame_filter_needs_the_xgm():
+    steps, read_step, _ = fake_run()
+    with pytest.raises(ValueError, match="needs the XGM"):
+        build_rocking_scan(steps, read_step, FEL, OFFSET, frame_filter=lambda images, xgm: xgm > 0)
+
+
+def test_band_mask_matches_the_band_filter():
+    from QoraFlow.preprocessor.generic_preprocessors import (
+        filter_images_qbpm_by_linear_model,
+        linear_model_band_mask,
+    )
+
+    rng = np.random.default_rng(1)
+    qbpm = rng.uniform(1, 2, 200)
+    images = qbpm[:, None, None] * np.ones((200, 3, 3)) + rng.normal(0, 0.05, (200, 3, 3))
+    images[:5] *= 3
+    mask = linear_model_band_mask(images, qbpm, sigma=2)
+    kept_images, kept_qbpm = filter_images_qbpm_by_linear_model(images, qbpm, sigma=2)
+    assert not mask[:5].any()
+    np.testing.assert_array_equal(kept_images, images[mask])
+    np.testing.assert_array_equal(kept_qbpm, qbpm[mask])
+
+
+@pytest.mark.parametrize("n", [0, 1, 2])
+@pytest.mark.parametrize("band", ["parameter", "residual"])
+def test_band_mask_keeps_every_frame_below_three(n, band):
+    from QoraFlow.preprocessor.generic_preprocessors import linear_model_band_mask
+
+    images = np.arange(n * 4, dtype=float).reshape(n, 2, 2)
+    mask = linear_model_band_mask(images, np.arange(1.0, n + 1), sigma=2, band=band)
+    assert mask.dtype == bool and mask.all() and mask.size == n
+
+
+def test_residual_band_keeps_a_fraction_independent_of_n():
+    from QoraFlow.preprocessor.generic_preprocessors import linear_model_band_mask
+
+    rng = np.random.default_rng(3)
+    kept = {}
+    for n in (48, 2000):
+        qbpm = rng.uniform(-0.5, 0.5, n)
+        images = (qbpm + rng.normal(0, 0.05, n))[:, None, None]
+        kept[n] = {
+            band: linear_model_band_mask(images, qbpm, sigma=2, band=band).mean()
+            for band in ("parameter", "residual")
+        }
+    assert 0.9 < kept[48]["residual"] and 0.9 < kept[2000]["residual"]
+    assert kept[2000]["parameter"] < kept[48]["parameter"] < kept[48]["residual"]
+
+
+def test_band_mask_rejects_an_unknown_band():
+    from QoraFlow.preprocessor.generic_preprocessors import linear_model_band_mask
+
+    with pytest.raises(ValueError, match="band must be"):
+        linear_model_band_mask(np.ones((4, 1, 1)), np.arange(4.0), sigma=2, band="prediction")
+
+
+def test_frame_filter_with_band_mask_keeps_pulses_with_few_frames():
+    from functools import partial
+
+    from QoraFlow.preprocessor.generic_preprocessors import linear_model_band_mask
+
+    steps, read_step, xgm = fake_run()
+    steps = [(theta, delay, trains[:2]) for theta, delay, trains in steps]
+
+    scan = build_rocking_scan(
+        steps,
+        read_step,
+        FEL,
+        OFFSET,
+        xgm_train_ids=np.arange(100, 106),
+        xgm=xgm,
+        seams=np.zeros((4, 6), bool),
+        frame_filter=partial(linear_model_band_mask, sigma=2),
+    )
+
+    np.testing.assert_array_equal(scan.frames_kept, scan.frames_total)
+    np.testing.assert_array_equal(scan.frames_total, np.full((2, FEL.size), 2))
